@@ -274,6 +274,7 @@
                                 <option value="Common Core">Common Core</option>
                                 <option value="NGSS">NGSS</option>
                                 <option value="NGSS + AP College Board">NGSS + AP College Board</option>
+                                <option value="CSTA">CSTA K-12 Computer Science Standards</option>
                             </select>
                         </div>
                         
@@ -325,10 +326,13 @@
             e.preventDefault();
             
             const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
             
             // Handle gifted checkbox properly
-            data.giftedTalented = document.getElementById('gifted').checked ? 'yes' : 'no';
+            if (document.getElementById('gifted').checked) {
+                formData.set('giftedTalented', 'yes');
+            } else {
+                formData.set('giftedTalented', 'no');
+            }
             
             const generateBtn = document.getElementById('generateBtn');
             
@@ -340,10 +344,7 @@
             try {
                 const response = await fetch(`${API_BASE}/api/generate-lesson`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
+                    body: formData
                 });
                 
                 if (response.ok) {

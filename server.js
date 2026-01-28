@@ -274,10 +274,6 @@ Examples:
 - Materials: Graph paper, colored markers, sticky notes
 - Safety equipment: Lab coats, safety goggles, gloves
 
-TEXTBOOK RESOURCES - Include specific chapters/sections:
-Examples:
-- Textbook: Physics for Scientists Chapter 4, pages 87-102
-- Workbook: Mathematics Practice Book, Unit 3, exercises 1-15
 
 REQUIREMENTS:
 - Minimum 6 resources total
@@ -309,7 +305,13 @@ For Common Core Math:
 - Include the complete standard code and description
 - Example: "CCSS.MATH.CONTENT.HSA.REI.B.3: Solve linear equations and inequalities in one variable, including equations with coefficients represented by letters."
 
-If the standard type is not specified, use NGSS for science, Common Core for math, and relevant national standards for other subjects.
+For CSTA K-12 Computer Science Standards:
+- Include the grade level, standard code, and complete standard description
+- Example: "9-10: 2-DA-07 - Represent data using multiple encoding schemes."
+- Example: "6-8: 1B-CS-02 - Model the way information is transmitted, stored, and processed in digital systems."
+- Use appropriate grade bands: K-2, 3-5, 6-8, 9-10, 11-12
+
+If the standard type is not specified, use NGSS for science, Common Core for math, CSTA for computer science/ICT, and relevant national standards for other subjects.
 
 --------------------------------------------------
 12. GIFTED STUDENTS (ALN OBJECTIVE)
@@ -383,7 +385,6 @@ Return your response as valid JSON with this exact structure:
     "PhET Simulation - Simulation Name: https://phet.colorado.edu/en/simulation/...",
     "YouTube - Video Title: https://www.youtube.com/watch?v=...",
     "Physical resource: Specific item name and quantity",
-    "Textbook: Book name, Chapter X, pages Y-Z",
     "Laboratory equipment: Specific items"
   ],
   "skills": "Critical thinking, Problem-solving, Collaboration, Analysis, Communication",
@@ -418,11 +419,36 @@ CRITICAL INSTRUCTIONS:
 
 1. CURRICULUM STANDARD:
    - You MUST provide the EXACT, COMPLETE curriculum standard for "${topic}" in Grade ${grade} ${subject}
+   - CRITICAL: Match the standard TYPE to the SUBJECT:
+     * MATH topics → Use Common Core Math standards (CCSS.MATH.CONTENT)
+     * SCIENCE topics → Use NGSS standards (HS-PS, MS-PS, etc.)
+     * ENGLISH topics → Use Common Core ELA standards (CCSS.ELA-LITERACY)
+     * ICT/COMPUTER SCIENCE topics → Use CSTA K-12 Computer Science Standards
+     * BUSINESS STUDIES → Use Common Core California Career Technical Education (CTE) standards
+     * ECONOMICS → Use Common Core California Economics standards (CA Content Standards Economics)
+     * PUBLIC SPEAKING → Use Common Core California Speaking/Listening standards (CCSS.ELA-LITERACY.SL)
+     * FRENCH → Use Common Core California World Languages standards (WL.CM)
+     * PHYSICAL EDUCATION → Use Common Core California Physical Education standards (CA PE Standards)
+     * VISUAL ARTS → Use Common Core California Visual Arts standards (CA VAPA)
+     * SOCIAL STUDIES → Use Common Core California History/Social Science standards
    - For ${standardType}, include:
-     * Full standard code (e.g., HS-PS2-1 for NGSS, or Big Idea 3, LO 3.A.1.1 for AP)
+     * Full standard code (e.g., CCSS.MATH.CONTENT.HSA.APR.C.5 for math, HS-PS2-1 for science)
      * Complete standard description/performance expectation
    - DO NOT write generic text like "Standard for Grade ${grade}"
-   - Find and cite the REAL standard that matches "${topic}"
+   - DO NOT mix subject standards (NO physics standards for math topics!)
+   - Examples by SUBJECT:
+     * MATH (Binomial Theorem): "CCSS.MATH.CONTENT.HSA.APR.C.5: Use the Binomial Theorem to expand polynomials."
+     * MATH (Quadratic Equations): "CCSS.MATH.CONTENT.HSA.REI.B.4: Solve quadratic equations in one variable."
+     * SCIENCE (Forces): "HS-PS2-1: Analyze data to support the claim that Newton's second law describes the mathematical relationship among force, mass, and acceleration."
+     * ENGLISH (Writing): "CCSS.ELA-LITERACY.WHST.9-10.1: Write arguments focused on discipline-specific content."
+     * ICT (Data Representation): "9-10: 2-DA-07 - Represent data using multiple encoding schemes."
+     * ICT (Algorithms): "6-8: 1B-AP-10 - Create programs that include sequences, events, loops, and conditionals."
+     * BUSINESS STUDIES (Marketing): "CA CTE 9.1.1: Demonstrate marketing concepts and strategies in a business environment."
+     * ECONOMICS (Supply/Demand): "CA Content Standards Economics 12.2.1: Analyze the relationship between supply, demand, and price in competitive markets."
+     * PUBLIC SPEAKING (Presentations): "CCSS.ELA-LITERACY.SL.9-10.4: Present information, findings, and supporting evidence clearly, concisely, and logically."
+     * FRENCH (Conversation): "WL.CM.9-10.1: Engage in conversations on a variety of topics using appropriate vocabulary and grammar."
+     * PHYSICAL EDUCATION (Fitness): "CA PE Standards 3.4: Assess and maintain a level of physical fitness to improve health and performance."
+     * VISUAL ARTS (Drawing): "CA VAPA 2.1: Create original works of art using various media and techniques."
 
 2. MY IDENTITY DOMAIN/ELEMENT:
    - INTELLIGENTLY select the most relevant domain (Culture/Value/Citizenship) based on "${topic}"
@@ -640,13 +666,18 @@ app.post('/api/generate-lesson', upload.single('file'), async (req, res) => {
     console.log('Resources with links:', templateData.resources.includes('http') ? 'YES' : 'NO');
     console.log('ALN Objectives:', templateData.alnObjectives ? 'POPULATED (' + templateData.alnObjectives.length + ' chars)' : 'EMPTY');
 
-    // Load template
+    // Load template - use absolute path for Render compatibility
     const templatePath = path.join(__dirname, 'LESSON PLAN TEMPLATE.docx');
+    
+    console.log('Looking for template at:', templatePath);
+    console.log('Template exists:', fs.existsSync(templatePath));
     
     if (!fs.existsSync(templatePath)) {
       return res.status(500).json({ 
         error: 'Template file not found', 
-        details: 'Please ensure "LESSON PLAN TEMPLATE.docx" exists in the project root directory' 
+        details: `Template not found at: ${templatePath}`,
+        workingDirectory: __dirname,
+        filesInDir: fs.readdirSync(__dirname)
       });
     }
 
