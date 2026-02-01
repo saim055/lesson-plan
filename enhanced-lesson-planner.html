@@ -259,7 +259,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="level">Difficulty Level</label>
-                            <select id="level" name="lessonLevel" required>
+                            <select id="level" name="level" required>
                                 <option value="">Select Level</option>
                                 <option value="Introductory">Introductory</option>
                                 <option value="Intermediate">Intermediate</option>
@@ -314,7 +314,8 @@
             
             <div class="loading" id="loading">
                 <div class="spinner"></div>
-                <p>Generating your AI-powered lesson plan...</p>
+                <p>Generating your AI-powered lesson plan... (up to 30 seconds)</p>
+                <p style="font-size: 12px; color: #666;">Creating professional, standards-aligned content</p>
             </div>
         </div>
     </div>
@@ -342,7 +343,7 @@
             hideMessage();
             
             try {
-                const response = await fetch(`${API_BASE}/api/generate-lesson`, {
+                const response = await fetch(`${API_BASE}/api/generate`, {
                     method: 'POST',
                     body: formData
                 });
