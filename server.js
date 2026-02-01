@@ -6,10 +6,19 @@ const cors = require("cors");
 const multer = require("multer");
 const pdf = require("pdf-parse");
 const mammoth = require("mammoth");
-const OpenAI = require("openai");
 const PizZip = require("pizzip");
 const Docxtemplater = require("docxtemplater");
 require("dotenv").config();
+
+// Environment variable debugging
+console.log('=== STARTUP DEBUG ===');
+console.log('Environment Variables:');
+console.log('GROQ_API_KEY present:', !!process.env.GROQ_API_KEY);
+console.log('GROQ_API_KEY length:', process.env.GROQ_API_KEY?.length || 0);
+console.log('PORT:', process.env.PORT || 'default');
+console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
+console.log('Working directory:', __dirname);
+console.log('=== END STARTUP DEBUG ===');
 
 // ================= APP SETUP =================
 const app = express();
@@ -17,12 +26,19 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
-const upload = multer({ dest: 'uploads/' });
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const upload = multer({ dest: uploadsDir });
 
 // ================= AI CLIENT =================
-const client = new OpenAI({
-  baseURL: "https://router.huggingface.co/v1",
-  apiKey: process.env.HUGGINGFACE_API_KEY
+const Groq = require("groq-sdk");
+const client = new Groq({
+  apiKey: process.env.GROQ_API_KEY
 });
 
 // ================= HELPER FUNCTIONS =================
@@ -419,11 +435,11 @@ CRITICAL INSTRUCTIONS:
 
 1. CURRICULUM STANDARD:
    - You MUST provide the EXACT, COMPLETE curriculum standard for "${topic}" in Grade ${grade} ${subject}
-   - CRITICAL: Match the standard TYPE to the SUBJECT:
-     * MATH topics → Use Common Core Math standards (CCSS.MATH.CONTENT)
-     * SCIENCE topics → Use NGSS standards (HS-PS, MS-PS, etc.)
-     * ENGLISH topics → Use Common Core ELA standards (CCSS.ELA-LITERACY)
-     * ICT/COMPUTER SCIENCE topics → Use CSTA K-12 Computer Science Standards
+   - CRITICAL: Match the standard TYPE to the SUBJECT and GRADE LEVEL:
+     * MATH topics → Use Common Core Math standards (CCSS.MATH.CONTENT) with grade-specific domains
+     * SCIENCE topics → Use NGSS standards (HS-PS, MS-PS, etc.) with grade bands
+     * ENGLISH topics → Use Common Core ELA standards (CCSS.ELA-LITERACY) with grade bands
+     * ICT/COMPUTER SCIENCE topics → Use CSTA K-12 Computer Science Standards with grade bands
      * BUSINESS STUDIES → Use Common Core California Career Technical Education (CTE) standards
      * ECONOMICS → Use Common Core California Economics standards (CA Content Standards Economics)
      * PUBLIC SPEAKING → Use Common Core California Speaking/Listening standards (CCSS.ELA-LITERACY.SL)
@@ -432,15 +448,31 @@ CRITICAL INSTRUCTIONS:
      * VISUAL ARTS → Use Common Core California Visual Arts standards (CA VAPA)
      * SOCIAL STUDIES → Use Common Core California History/Social Science standards
    - For ${standardType}, include:
-     * Full standard code (e.g., CCSS.MATH.CONTENT.HSA.APR.C.5 for math, HS-PS2-1 for science)
+     * Full standard code (e.g., CCSS.MATH.CONTENT.1.OA.C.6 for Grade 1 Math)
      * Complete standard description/performance expectation
    - DO NOT write generic text like "Standard for Grade ${grade}"
    - DO NOT mix subject standards (NO physics standards for math topics!)
-   - Examples by SUBJECT:
-     * MATH (Binomial Theorem): "CCSS.MATH.CONTENT.HSA.APR.C.5: Use the Binomial Theorem to expand polynomials."
-     * MATH (Quadratic Equations): "CCSS.MATH.CONTENT.HSA.REI.B.4: Solve quadratic equations in one variable."
-     * SCIENCE (Forces): "HS-PS2-1: Analyze data to support the claim that Newton's second law describes the mathematical relationship among force, mass, and acceleration."
-     * ENGLISH (Writing): "CCSS.ELA-LITERACY.WHST.9-10.1: Write arguments focused on discipline-specific content."
+   - Examples by SUBJECT and GRADE:
+     * GRADE 1 MATH (Single Digit Addition): "CCSS.MATH.CONTENT.1.OA.C.6: Add and subtract within 20, demonstrating fluency for addition and subtraction within 10. Use strategies such as counting on; making ten; decomposing a number leading to a ten; using the relationship between addition and subtraction; and creating equivalent but easier or known sums."
+     * GRADE 2 MATH (Two Digit Addition): "CCSS.MATH.CONTENT.2.NBT.B.5: Fluently add and subtract within 100 using strategies based on place value, properties of operations, and/or the relationship between addition and subtraction."
+     * GRADE 3 MATH (Multiplication): "CCSS.MATH.CONTENT.3.OA.A.1: Interpret products of whole numbers, e.g., interpret 5 × 7 as the total number of objects in 5 groups of 7 objects each."
+     * GRADE 4 MATH (Multi-digit Multiplication): "CCSS.MATH.CONTENT.4.NBT.B.5: Multiply a whole number of up to four digits by a one-digit whole number, and multiply two two-digit numbers, using strategies based on place value and the properties of operations."
+     * GRADE 5 MATH (Fractions): "CCSS.MATH.CONTENT.5.NF.A.1: Add and subtract fractions with unlike denominators by replacing given fractions with equivalent fractions in such a way as to produce an equivalent sum or difference of fractions with like denominators."
+     * GRADE 6 MATH (Ratios): "CCSS.MATH.CONTENT.6.RP.A.1: Understand the concept of a ratio and use ratio language to describe a ratio relationship between two quantities."
+     * GRADE 7 MATH (Proportional Relationships): "CCSS.MATH.CONTENT.7.RP.A.2: Recognize and represent proportional relationships between quantities."
+     * GRADE 8 MATH (Linear Equations): "CCSS.MATH.CONTENT.8.EE.C.7: Solve linear equations in one variable."
+     * GRADE 9-12 MATH (Quadratic Equations): "CCSS.MATH.CONTENT.HSA.REI.B.4: Solve quadratic equations in one variable."
+     * GRADE 1 SCIENCE (Plant Parts): "1-LS1-1: Use materials to design a solution to a human problem by mimicking how plants and animals use their external parts to help them survive, grow, and meet their needs."
+     * GRADE 1 SCIENCE (Plant Needs): "K-LS1-1: Use observations to describe patterns of what plants and animals (including humans) need to survive."
+     * GRADE 2 SCIENCE (Plant Life Cycles): "2-LS2-1: Plan and conduct an investigation to determine if plants need sunlight and water to grow."
+     * GRADE 3 SCIENCE (Plant Structures): "3-LS1-1: Develop models to describe that organisms have unique and diverse life cycles but all have in common birth, growth, reproduction, and death."
+     * GRADE 4 SCIENCE (Plant Structures): "4-LS1-1: Construct an argument that plants and animals have internal and external structures that function to support survival, growth, behavior, and reproduction."
+     * GRADE 5 SCIENCE (Plant Matter): "5-PS3-1: Use models to describe that energy in animals' food was once energy from the sun."
+     * GRADE 1 ENGLISH (Story Writing): "CCSS.ELA-LITERACY.W.1.3: Write narratives in which they recount two or more appropriately sequenced events, include some details regarding what happened, use temporal words to signal event order, and provide some sense of closure."
+     * GRADE 1 ENGLISH (Reading Stories): "CCSS.ELA-LITERACY.RL.1.2: Retell stories, including key details, and demonstrate understanding of their central message or lesson."
+     * GRADE 1 ENGLISH (Story Elements): "CCSS.ELA-LITERACY.RL.1.3: Describe characters, settings, and major events in a story, using key details."
+     * GRADE 2 ENGLISH (Story Writing): "CCSS.ELA-LITERACY.W.2.3: Write narratives in which they recount a well-elaborated event or short sequence of events, include details to describe actions, thoughts, and feelings, use temporal words to signal event order, and provide a sense of closure."
+     * GRADE 3 ENGLISH (Story Writing): "CCSS.ELA-LITERACY.W.3.3: Write narratives to develop real or imagined experiences or events using effective technique, descriptive details, and clear event sequences."
      * ICT (Data Representation): "9-10: 2-DA-07 - Represent data using multiple encoding schemes."
      * ICT (Algorithms): "6-8: 1B-AP-10 - Create programs that include sequences, events, loops, and conditionals."
      * BUSINESS STUDIES (Marketing): "CA CTE 9.1.1: Demonstrate marketing concepts and strategies in a business environment."
@@ -470,7 +502,45 @@ CRITICAL INSTRUCTIONS:
    - All URLs must be real, complete, and start with https://
    - Example: "Khan Academy - Newton's Laws: https://www.khanacademy.org/science/physics/forces-newtons-laws"
 
-4. GIFTED STUDENTS ALN:
+5. ENHANCED TEACHING COMPONENT (10-MINUTE MAXIMUM):
+   - Create a detailed, student-centered teaching sequence (MAXIMUM 10 minutes)
+   - Focus specifically on: What NEW knowledge and/or skill will you teach? How?
+   - Structure as a direct instruction mini-lesson with clear timing:
+   
+   **FORMAT:**
+   "Minutes 0-2: [Hook/Engagement] - Students will [specific action] to [activate prior knowledge]
+   Minutes 2-7: [Direct Instruction] - I will teach [specific new knowledge/skill] by [method] using [materials]
+   Minutes 7-10: [Guided Practice] - Students will [demonstrate understanding] through [specific activity]"
+   
+   **EXAMPLE FOR GRADE 1 STORY WRITING:**
+   "Minutes 0-2: Hook/Engagement - Students will listen to a short story without ending and predict what happens next, sharing their ideas with a partner
+   Minutes 2-7: Direct Instruction - I will teach story sequencing by modeling how to use 'first, then, next, finally' on a story map, using picture cards and think-aloud strategy
+   Minutes 7-10: Guided Practice - Students will create their own 4-part story map using picture prompts, practicing temporal words with sentence starters"
+   
+   **STUDENT-CENTERED REQUIREMENTS:**
+   - Use "Students will..." language throughout
+   - Include specific student actions and responses
+   - Describe exactly what students will DO, not just what teacher will say
+   - Include hands-on activities where students manipulate materials
+   - Incorporate think-pair-share or turn-and-talk opportunities
+   - Provide specific examples of student work/products
+   - Include formative assessment checks (thumbs up, whiteboards, etc.)
+   
+   **GRADE-SPECIFIC STRATEGIES:**
+   - Grades K-2: Concrete manipulatives, movement, songs/rhymes, drawing, picture prompts
+   - Grades 3-5: Models, diagrams, structured inquiry, peer teaching, graphic organizers
+   - Grades 6-8: Investigations, data collection, argumentation, modeling
+   - Grades 9-12: Analysis, design challenges, research, presentations
+   
+   **MUST INCLUDE:**
+   - Specific timing breakdown (0-2, 2-7, 7-10 minutes)
+   - Clear learning objective for this 10-minute segment
+   - Student actions for each time segment
+   - Materials students will use
+   - How you'll check for understanding
+   - What students will produce/show as evidence of learning
+
+6. GIFTED STUDENTS ALN:
    ${giftedTalented === 'yes' ? `
    - REQUIRED: Generate "alnObjective" field with complete DOK 4 statement
    - Format: "Gifted students will [action verb] [topic] by [method] to [outcome with UAE connection]"
@@ -485,27 +555,114 @@ Generate a complete, detailed lesson plan following all requirements above.
 Return ONLY valid JSON - no explanations, no markdown, just the JSON object.`;
 
   console.log('Calling AI with Expert Prompt...');
+  console.log('Groq API Key present:', !!process.env.GROQ_API_KEY);
+  console.log('API Key length:', process.env.GROQ_API_KEY?.length || 0);
   
-  const completion = await client.chat.completions.create({
-    model: "meta-llama/Llama-3.1-70B-Instruct",
-    messages: [
-      { role: "system", content: EXPERT_SYSTEM_PROMPT },
-      { role: "user", content: userPrompt }
-    ],
-    temperature: 0.5,
-    max_tokens: 5000
-  });
+  let attempts = 0;
+  const maxAttempts = 2;
+  
+  while (attempts < maxAttempts) {
+    attempts++;
+    console.log(`AI attempt ${attempts}/${maxAttempts}`);
+    
+    try {
+      const completion = await client.chat.completions.create({
+        model: "mixtral-8x7b-32768",
+        messages: [
+          { role: "system", content: EXPERT_SYSTEM_PROMPT },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 2500
+      });
 
-  const raw = completion.choices[0].message.content;
-  console.log('AI Response received:', raw.substring(0, 200) + '...');
+      const raw = completion.choices[0].message.content;
+      console.log('AI Response received:', raw.substring(0, 200) + '...');
+      
+      // Extract JSON from response
+      const jsonStart = raw.indexOf('{');
+      const jsonEnd = raw.lastIndexOf('}') + 1;
+      const jsonStr = raw.slice(jsonStart, jsonEnd);
+      
+      const result = JSON.parse(jsonStr);
+      console.log('✅ AI generation successful on attempt', attempts);
+      return result;
+      
+    } catch (error) {
+      console.error(`AI attempt ${attempts} failed:`, error.message);
+      console.error('Full error:', error);
+      
+      if (attempts >= maxAttempts) {
+        console.log('All AI attempts failed, using fallback...');
+        break;
+      }
+      
+      // Wait 2 seconds before retry
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
   
-  // Extract JSON from response
-  const jsonStart = raw.indexOf('{');
-  const jsonEnd = raw.lastIndexOf('}') + 1;
-  const jsonStr = raw.slice(jsonStart, jsonEnd);
-  
-  return JSON.parse(jsonStr);
-}
+  // Fallback response with proper template
+  const fallbackResponse = {
+      standardText: `${standardType} Standard for Grade ${grade} ${subject}: ${topic}`,
+      objectives: [
+        { dok: "DOK1", text: `Students will identify and define key concepts related to ${topic}` },
+        { dok: "DOK2", text: `Students will explain and apply ${topic} concepts in structured situations` },
+        { dok: "DOK3", text: `Students will analyze and evaluate ${topic} applications in real-world contexts` }
+      ],
+      outcomes: {
+        all: { dok: "DOK1", text: `All students will recognize and describe basic ${topic} concepts` },
+        most: { dok: "DOK2", text: `Most students will apply ${topic} principles to solve problems` },
+        some: { dok: "DOK3", text: `Some students will analyze and evaluate complex ${topic} scenarios` }
+      },
+      starter: `What do you already know about ${topic}? Write down 2-3 ideas and share with your partner.`,
+      teaching: `Today we will explore ${topic} through interactive demonstrations, guided practice, and collaborative learning. We will build from basic concepts to practical applications.`,
+      cooperative: {
+        support: `Work in pairs to create a concept map showing key ideas about ${topic}. Use provided templates and examples to guide your thinking.`,
+        average: `In small groups, analyze a case study involving ${topic} and create a presentation explaining the main concepts and their relationships.`,
+        upper: `Design and evaluate a solution to a real-world problem using ${topic} principles. Justify your choices and predict potential outcomes.`
+      },
+      independent: {
+        support: `Complete structured practice exercises on ${topic} with step-by-step guidance and immediate feedback.`,
+        average: `Apply ${topic} concepts to solve 3-5 problems of increasing complexity, showing all work and explaining your reasoning.`,
+        upper: `Research and critically evaluate how ${topic} is used in UAE industry or society. Write a 500-word analysis with recommendations.`
+      },
+      plenary: [
+        { dok: "DOK1", q: `What are the 3 most important concepts about ${topic} we learned today?` },
+        { dok: "DOK2", q: `How would you explain ${topic} to someone who has never studied it before?` },
+        { dok: "DOK2", q: `What are the practical applications of ${topic} in daily life?` },
+        { dok: "DOK3", q: `Why is ${topic} important for your future career or further studies?` },
+        { dok: "DOK4", q: `How could ${topic} be improved or innovated to better serve society?` }
+      ],
+      vocabulary: ["terminology", "application", "analysis", "synthesis", "evaluation", "implementation"],
+      resources: [
+        `Khan Academy - ${topic} Tutorials: https://www.khanacademy.org/search?q=${encodeURIComponent(topic)}`,
+        `YouTube - Educational Videos: https://www.youtube.com/results?search_query=${encodeURIComponent(topic)}+explained`,
+        `Interactive simulations and digital tools for ${topic}`,
+        `Grade-appropriate textbook materials and workbooks`,
+        `Hands-on learning materials and laboratory equipment`,
+        `Online assessment tools and practice platforms`
+      ],
+      skills: "Critical thinking, problem-solving, collaboration, communication, digital literacy, analysis",
+      realWorld: `${topic} is essential in UAE's development, with applications in renewable energy, smart cities, healthcare innovation, and sustainable technology. Students will explore how ${topic} contributes to UAE Vision 2070 and global competitiveness.`,
+      identity: {
+        domain: subject.includes('Science') ? "Citizenship" : subject.includes('Math') ? "Value" : "Culture",
+        element: subject.includes('Science') ? "Conservation" : subject.includes('Math') ? "Respect" : "Arabic Language",
+        description: `${topic} connects to UAE's ${subject.includes('Science') ? 'environmental conservation and sustainability efforts' : subject.includes('Math') ? 'commitment to precision and innovation' : 'rich cultural heritage and linguistic traditions'}, promoting ${subject.includes('Science') ? 'responsible resource management' : subject.includes('Math') ? 'analytical thinking and ethical data use' : 'cultural understanding and communication excellence'}.`
+      },
+      moralEducation: `${topic} integrates with Islamic values through ethical considerations, responsible innovation, and commitment to serving humanity. Students learn to apply knowledge with integrity and compassion.`,
+      steam: `${topic} demonstrates the integration of Science and Technology through practical applications, Engineering principles in problem-solving, Arts in creative solutions, and Mathematics in quantitative analysis and modeling.`,
+      linksToSubjects: `Mathematics: Quantitative analysis and problem-solving\nEnglish: Technical communication and documentation\nScience: Scientific method and inquiry-based learning`,
+      environment: `${topic} supports UAE's sustainability goals through efficient resource use, environmental protection, and development of green technologies that align with national climate action initiatives.`
+    };
+    
+    // Add ALN objective if gifted students are selected
+    if (giftedTalented === 'yes') {
+      fallbackResponse.alnObjective = `Gifted students will design and implement an innovative ${topic} project that addresses a real UAE challenge, synthesizing advanced concepts with cutting-edge technology to create a scalable solution with measurable impact (DOK 4).`;
+    }
+    
+    return fallbackResponse;
+  }
 
 // ================= ROUTES =================
 
@@ -525,28 +682,47 @@ app.post('/api/generate-lesson', upload.single('file'), async (req, res) => {
 
     // Validate required fields
     if (!grade || !subject || !topic || !lessonLevel) {
-      return res.status(400).json({ error: "Missing required fields: grade, subject, topic, or level" });
+      console.error('Validation failed: Missing required fields');
+      return res.status(400).json({ 
+        error: "Missing required fields: grade, subject, topic, or level",
+        received: { grade, subject, topic, lessonLevel }
+      });
     }
 
     // Extract file content if uploaded
     let fileContent = '';
     if (req.file) {
       console.log('Processing uploaded file:', req.file.originalname);
-      fileContent = await extractFileContent(req.file.path);
-      fs.unlinkSync(req.file.path);
+      try {
+        fileContent = await extractFileContent(req.file.path);
+        fs.unlinkSync(req.file.path);
+      } catch (fileError) {
+        console.error('File processing error:', fileError);
+        // Continue without file content
+      }
     }
 
     // Generate lesson with AI
     console.log('Generating expert lesson plan...');
-    const aiData = await generateExpertLesson({
-      grade,
-      subject,
-      topic,
-      level: lessonLevel,
-      standardType: standardType || 'NGSS + AP College Board',
-      fileContent,
-      giftedTalented
-    });
+    let aiData;
+    try {
+      aiData = await generateExpertLesson({
+        grade,
+        subject,
+        topic,
+        level: lessonLevel,
+        standardType: standardType || 'NGSS + AP College Board',
+        fileContent,
+        giftedTalented
+      });
+    } catch (aiError) {
+      console.error('AI generation failed:', aiError.message);
+      return res.status(500).json({
+        error: 'AI generation failed',
+        details: aiError.message,
+        stack: process.env.NODE_ENV === 'development' ? aiError.stack : undefined
+      });
+    }
 
     console.log('AI Generation Complete');
     console.log('Objectives:', aiData.objectives?.length || 0);
@@ -554,6 +730,9 @@ app.post('/api/generate-lesson', upload.single('file'), async (req, res) => {
     console.log('Identity:', aiData.identity?.domain + ' - ' + aiData.identity?.element || 'MISSING');
     console.log('Resources:', aiData.resources?.length || 0);
     console.log('ALN Objective:', aiData.alnObjective ? 'PRESENT' : 'NOT PRESENT');
+    console.log('Teaching Component Length:', aiData.teaching?.length || 0);
+    console.log('Full Teaching Component:', aiData.teaching || 'MISSING');
+    console.log('Used AI or Fallback:', aiData.standardText?.includes('Standard for Grade') ? 'FALLBACK' : 'AI GENERATED');
 
     // Validate critical fields
     if (!aiData.standardText || aiData.standardText.length < 30) {
@@ -673,6 +852,7 @@ app.post('/api/generate-lesson', upload.single('file'), async (req, res) => {
     console.log('Template exists:', fs.existsSync(templatePath));
     
     if (!fs.existsSync(templatePath)) {
+      console.error('Template file not found');
       return res.status(500).json({ 
         error: 'Template file not found', 
         details: `Template not found at: ${templatePath}`,
@@ -683,33 +863,50 @@ app.post('/api/generate-lesson', upload.single('file'), async (req, res) => {
 
     console.log('Loading template from:', templatePath);
     
-    const templateContent = fs.readFileSync(templatePath);
-    const zip = new PizZip(templateContent);
-    const doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks: true,
-    });
+    let templateContent, zip, doc;
+    try {
+      templateContent = fs.readFileSync(templatePath);
+      zip = new PizZip(templateContent);
+      doc = new Docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+      });
+    } catch (templateError) {
+      console.error('Template loading error:', templateError);
+      return res.status(500).json({
+        error: 'Failed to load template',
+        details: templateError.message
+      });
+    }
 
     // Render template
     console.log('Rendering template with AI data...');
-    doc.setData(templateData);
-    
     try {
+      doc.setData(templateData);
       doc.render();
-    } catch (error) {
-      console.error('Template render error:', error);
+    } catch (renderError) {
+      console.error('Template render error:', renderError);
       return res.status(500).json({ 
         error: 'Failed to render template', 
-        details: error.message,
-        properties: error.properties
+        details: renderError.message,
+        properties: renderError.properties
       });
     }
 
     // Generate buffer
-    const buffer = doc.getZip().generate({
-      type: 'nodebuffer',
-      compression: 'DEFLATE',
-    });
+    let buffer;
+    try {
+      buffer = doc.getZip().generate({
+        type: 'nodebuffer',
+        compression: 'DEFLATE',
+      });
+    } catch (bufferError) {
+      console.error('Buffer generation error:', bufferError);
+      return res.status(500).json({
+        error: 'Failed to generate document',
+        details: bufferError.message
+      });
+    }
 
     console.log('Document generated successfully');
     console.log('File size:', buffer.length, 'bytes');
@@ -719,19 +916,34 @@ app.post('/api/generate-lesson', upload.single('file'), async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="Lesson_Plan_G${grade}_${subject}_${topic.replace(/\s+/g, '_')}.docx"`);
     res.send(buffer);
 
-    console.log('========== LESSON GENERATION COMPLETE ==========\n');
-
-  } catch (error) {
-    console.error('========== ERROR ==========');
-    console.error('Error:', error.message);
-    console.error('Stack:', error.stack);
-    console.error('===========================\n');
+    console.log('========== LESSON GENERATION COMPLETE ==========');
     
-    res.status(500).json({ 
-      error: 'Lesson generation failed', 
-      details: error.message 
+  } catch (error) {
+    console.error('Unexpected error in lesson generation:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
+});
+
+// ================= ERROR HANDLING MIDDLEWARE =================
+
+app.use((error, req, res, next) => {
+  console.error('Unhandled error:', error);
+  res.status(500).json({
+    error: 'Internal server error',
+    details: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not found',
+    message: `Route ${req.method} ${req.path} not found`
+  });
 });
 
 // Test endpoint
@@ -751,6 +963,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('═══════════════════════════════════════════════');
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📁 Template: ${path.join(__dirname, 'LESSON PLAN TEMPLATE.docx')}`);
-  console.log(`🤖 AI: meta-llama/Llama-3.1-70B-Instruct`);
+  console.log(`🤖 AI: Groq llama-3.3-70b-versatile`);
   console.log('═══════════════════════════════════════════════\n');
 });
