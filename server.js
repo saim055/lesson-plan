@@ -80,13 +80,80 @@ const DOK_PROFILE = {
   mastery: ["DOK3", "DOK4", "DOK4"]
 };
 
-// ================= EXPERT PROMPT SYSTEM =================
+// ================= STANDARDS MAPPING =================
+const STANDARDS_FRAMEWORK = {
+  mathematics: {
+    calculus: 'Common Core State Standards for Mathematics - High School',
+    'pre-calculus': 'Common Core State Standards for Mathematics - High School',
+    algebra: 'Common Core State Standards for Mathematics - High School',
+    geometry: 'Common Core State Standards for Mathematics - High School',
+    default: 'Common Core State Standards for Mathematics'
+  },
+  science: {
+    grades_1_5: 'Next Generation Science Standards (NGSS)',
+    grades_6_8: 'Next Generation Science Standards (NGSS)',
+    grade_9: 'Next Generation Science Standards (NGSS)',
+    physics: 'NGSS + AP Physics College Board',
+    chemistry: 'NGSS + AP Chemistry College Board',
+    biology: 'NGSS + AP Biology College Board',
+    default: 'Next Generation Science Standards (NGSS)'
+  },
+  english: {
+    default: 'Common Core State Standards for English Language Arts'
+  },
+  'computer science': {
+    default: 'Computer Science Teachers Association (CSTA) K-12 Standards'
+  },
+  default: 'California Common Core State Standards'
+};
+
+function getStandardsFramework(subject, grade) {
+  const subjectLower = subject.toLowerCase();
+  
+  // Mathematics
+  if (subjectLower.includes('math') || subjectLower.includes('calculus') || 
+      subjectLower.includes('algebra') || subjectLower.includes('geometry')) {
+    if (subjectLower.includes('calculus')) return STANDARDS_FRAMEWORK.mathematics.calculus;
+    if (subjectLower.includes('pre-calculus')) return STANDARDS_FRAMEWORK.mathematics['pre-calculus'];
+    return STANDARDS_FRAMEWORK.mathematics.default;
+  }
+  
+  // Science
+  if (subjectLower.includes('science') || subjectLower.includes('physics') || 
+      subjectLower.includes('chemistry') || subjectLower.includes('biology')) {
+    const gradeNum = parseInt(grade);
+    if (subjectLower.includes('physics')) return STANDARDS_FRAMEWORK.science.physics;
+    if (subjectLower.includes('chemistry')) return STANDARDS_FRAMEWORK.science.chemistry;
+    if (subjectLower.includes('biology')) return STANDARDS_FRAMEWORK.science.biology;
+    if (gradeNum >= 1 && gradeNum <= 5) return STANDARDS_FRAMEWORK.science.grades_1_5;
+    if (gradeNum >= 6 && gradeNum <= 8) return STANDARDS_FRAMEWORK.science.grades_6_8;
+    if (gradeNum === 9) return STANDARDS_FRAMEWORK.science.grade_9;
+    return STANDARDS_FRAMEWORK.science.default;
+  }
+  
+  // English
+  if (subjectLower.includes('english') || subjectLower.includes('language arts') || 
+      subjectLower.includes('reading') || subjectLower.includes('writing')) {
+    return STANDARDS_FRAMEWORK.english.default;
+  }
+  
+  // Computer Science
+  if (subjectLower.includes('computer') || subjectLower.includes('coding') || 
+      subjectLower.includes('programming')) {
+    return STANDARDS_FRAMEWORK['computer science'].default;
+  }
+  
+  // Default
+  return STANDARDS_FRAMEWORK.default;
+}
+
+// ================= ENHANCED EXPERT PROMPT SYSTEM =================
 
 const EXPERT_SYSTEM_PROMPT = `You are an expert curriculum designer and experienced subject specialist.
 
 Your task is to generate an OUTSTANDING, inspection-ready lesson plan.
 The lesson must demonstrate clear cognitive progression, strong differentiation,
-and practical classroom usability.
+and practical classroom usability with student-centered pedagogy.
 
 You MUST follow ALL instructions below. Do not skip or simplify any part.
 
@@ -114,21 +181,59 @@ MASTERY LESSON
 - Purpose: Analysis, evaluation, transfer, and synthesis
 
 --------------------------------------------------
-2. LEARNING OBJECTIVES (MANDATORY)
+2. LEARNING OBJECTIVES (SMART + MANDATORY)
 --------------------------------------------------
 
-You must write EXACTLY three learning objectives.
+You must write EXACTLY three SMART learning objectives.
+
+Each objective must be:
+- SPECIFIC: Clearly state the cognitive action (e.g., calculate force pairs, analyze collision scenarios, evaluate energy transfer)
+- MEASURABLE: Observable and assessable (use action verbs from Bloom's Taxonomy)
+- ACHIEVABLE: Realistic for the grade level and lesson duration
+- RELEVANT: Directly connected to the standard and topic
+- TIME-BOUND: Achievable within the lesson timeframe
+
+Format: "Students will [ACTION VERB] [SPECIFIC CONTENT] [CONTEXT/CONDITION] (DOK X)"
+
+Examples:
+✓ "Students will calculate action-reaction force pairs in everyday scenarios using Newton's Third Law (DOK 2)"
+✓ "Students will analyze momentum conservation in collision systems to predict post-collision velocities (DOK 3)"
+✗ "Students will understand Newton's Third Law" (NOT measurable)
+✗ "Students will learn about forces" (TOO vague)
 
 Each objective must:
-- Clearly state the cognitive action (e.g., define, explain, calculate, analyze, justify, design)
 - Match the assigned DOK level
 - Be specific to the lesson topic
+- Use precise action verbs appropriate to the DOK level
 
 Do NOT repeat objectives using different words.
-Do NOT use vague verbs such as "understand" or "learn".
+Do NOT use vague verbs such as "understand", "learn", "know about", or "be aware of".
 
 --------------------------------------------------
-3. DIFFERENTIATED LEARNING OUTCOMES
+3. STANDARDS ALIGNMENT (CRITICAL)
+--------------------------------------------------
+
+You MUST provide the EXACT, SPECIFIC standard code and full description.
+
+The standard framework has been provided to you. Based on this framework:
+
+FORMAT REQUIRED:
+"[STANDARD CODE]: [Complete Standard Description]
+
+Example: Newton's Laws of Motion"
+
+Examples:
+✓ "HS-PS2-1: Analyze data to support the claim that Newton's second law of motion describes the mathematical relationship among the net force on a macroscopic object, its mass, and its acceleration."
+
+✗ "NGSS + AP College Board Standard for Grade 11 Physics: third law of motion" (TOO VAGUE)
+
+YOU MUST:
+1. Identify the exact standard code (e.g., HS-PS2-1, CCSS.MATH.HSF-IF.C.7, W.11-12.2)
+2. Write the COMPLETE standard description verbatim
+3. Add the example topic if helpful for clarity
+
+--------------------------------------------------
+4. DIFFERENTIATED LEARNING OUTCOMES
 --------------------------------------------------
 
 Outcomes must be derived directly from the learning objectives.
@@ -140,625 +245,546 @@ You must write:
 
 Rules:
 - Outcomes must NOT repeat the learning objectives verbatim
-- Outcomes must be measurable
+- Outcomes must be measurable and specific
 - Cognitive demand must clearly increase from ALL → MOST → SOME
+- Each outcome should describe what students will PRODUCE or DEMONSTRATE
 
---------------------------------------------------
-4. STARTER (INQUIRY-BASED)
---------------------------------------------------
-
-The starter must:
-- Be a prediction, observation, or conceptual question
-- Occur BEFORE any explanation
-- Reveal prior knowledge or misconceptions
-- Be directly linked to the lesson topic
-
-Do NOT explain concepts in the starter.
-
---------------------------------------------------
-5. TEACHING & LEARNING (MAIN INPUT)
---------------------------------------------------
-
-The teaching section must:
-- Respond directly to student predictions from the starter
-- Use clear subject-specific explanations
-- Include representations where relevant (e.g., diagrams, equations, graphs)
-- Progress from concept → relationship → application
-
-Avoid textbook-style paragraphs.
-Write as a teacher explaining to students.
-
---------------------------------------------------
-6. COOPERATIVE TASKS (DETAILED & USABLE)
---------------------------------------------------
-
-You must design THREE cooperative tasks:
-
-A. Support Group (Lower ability)
-- Cognitive level: lowest DOK
-- Task must state:
-  • What students do
-  • What they produce (e.g., labelled diagram, short explanation, calculation)
-  • How the teacher checks understanding
-
-B. Core Group (Average ability)
-- Cognitive level: middle DOK
-- Task must involve reasoning or application
-- Must require more than recall
-
-C. Challenge Group (Upper ability)
-- Cognitive level: highest DOK
-- Task must require justification, analysis, or decision-making
-- Students must explain WHY, not just calculate
-
-Do NOT write "worksheet", "diagram", or "activity" without explanation.
-The teacher must know EXACTLY what happens in class.
-
---------------------------------------------------
-7. INDEPENDENT TASKS (DETAILED & DOK-ALIGNED)
---------------------------------------------------
-
-You must design THREE independent tasks:
-
-- Support level → lowest DOK
-- Core level → middle DOK
-- Challenge level → highest DOK
-
-Each task must clearly describe:
-- The question or problem
-- The expected student output
-- The level of thinking involved
-
---------------------------------------------------
-8. PLENARY (MANDATORY – 5 QUESTIONS)
---------------------------------------------------
-
-You must include AT LEAST FIVE plenary questions.
-
-Rules:
-- Questions must span the DOK levels of the lesson
-- Questions must check understanding, reasoning, and transfer
-- At least:
-  • 1 recall/explanation question
-  • 2 application questions
-  • 2 higher-order (why / justify / evaluate) questions
-
-List the questions clearly.
-
---------------------------------------------------
-9. MY IDENTITY (STRUCTURED – INTELLIGENT SELECTION REQUIRED)
---------------------------------------------------
-
-You MUST select the MOST RELEVANT domain and element based on the lesson topic.
-
-DOMAIN SELECTION GUIDE:
-
-**Culture** - Use when the topic involves:
-- Language, literature, communication
-- Historical events, traditions, cultural practices
-- UAE heritage, archaeology, traditional knowledge
-Elements: Arabic Language, History, Heritage
-
-**Value** - Use when the topic involves:
-- Ethical decisions, moral reasoning
-- Interpersonal skills, empathy, understanding others
-- Global perspectives, international cooperation
-Elements: Respect, Compassion, Global Understanding
-
-**Citizenship** - Use when the topic involves:
-- Environmental issues, sustainability, conservation
-- Community participation, civic duty
-- National identity, social responsibility
-Elements: Belonging, Volunteering, Conservation
-
-SELECTION EXAMPLES:
-- Physics experiments → Citizenship - Conservation (lab safety, waste reduction)
-- Math/Statistics → Value - Respect (data privacy, ethical use of information)
-- Environmental science → Citizenship - Conservation (sustainability)
-- Literature/Poetry → Culture - Arabic Language or Heritage
-- Engineering/Design → Citizenship - Volunteering (community problem-solving)
-- Biology/Medicine → Value - Compassion (healthcare, helping others)
-
-MANDATORY REQUIREMENTS:
-- Choose the ONE domain that fits the topic BEST
-- Select the ONE element within that domain that is MOST relevant
-- Write 2-3 sentences explaining the connection
-- Be specific about UAE context and real applications
-- Do NOT use Culture - Heritage as default unless truly relevant
-
-CRITICAL: If you cannot identify a clear connection, analyze the topic more deeply. Every subject has a My Identity link - find it.
-
---------------------------------------------------
-10. RESOURCES (MANDATORY – SPECIFIC WITH WEB LINKS)
---------------------------------------------------
-
-You MUST provide 6-8 specific, actionable resources.
-
-DIGITAL RESOURCES - MUST include exact web links:
-Format: Resource Name: Full URL
 Examples:
-- Khan Academy - Newton's Laws: https://www.khanacademy.org/science/physics/forces-newtons-laws
-- PhET Simulation - Circuit Construction: https://phet.colorado.edu/en/simulation/circuit-construction-kit-dc
-- YouTube - Crash Course Chemistry #1: https://www.youtube.com/watch?v=FSyAehMdpyI
-- Desmos Graphing Calculator: https://www.desmos.com/calculator
-- GeoGebra - Geometry Tools: https://www.geogebra.org/geometry
+✓ ALL: "All students will identify and label action-reaction force pairs in at least 3 everyday examples"
+✓ MOST: "Most students will calculate and explain force magnitudes in collision scenarios with 80% accuracy"
+✓ SOME: "Some students will design and evaluate a solution to reduce collision impact using momentum principles"
 
-PHYSICAL RESOURCES - Be specific about what and how:
+--------------------------------------------------
+5. STARTER (ATTENTION-GRABBING & INQUIRY-BASED)
+--------------------------------------------------
+
+The starter must be IMMEDIATELY engaging and thought-provoking.
+
+Requirements:
+✓ Hook students' attention in the first 10 seconds
+✓ Use a prediction question, demonstration, surprising fact, or real-world scenario
+✓ Activate prior knowledge and reveal misconceptions
+✓ Connect directly to the lesson topic
+✓ Occur BEFORE any explanation
+
+ENHANCED STRATEGIES:
+- Demonstration: "Watch as I [action]. What do you predict will happen?"
+- Paradox: "If you push a wall, why doesn't it move? The wall pushes back with equal force!"
+- Real-world connection: "Have you ever wondered why..."
+- Student experience: "Think about the last time you..."
+- Visual stimulus: Show an intriguing image/video then ask a question
+
 Examples:
-- Laboratory equipment: Beakers (250ml), test tubes, Bunsen burner
-- Manipulatives: Base-10 blocks, fraction circles, geometric shapes
-- Materials: Graph paper, colored markers, sticky notes
-- Safety equipment: Lab coats, safety goggles, gloves
+✓ "I'm going to place this book on the table. The book pushes down on the table with its weight. Question: Does the table push back? If yes, why doesn't the book fall through? Turn to your partner and discuss for 30 seconds."
 
+✓ "Watch this slow-motion video of a car crash test. What forces do you observe? What happens to the car's momentum? Write down 2 observations."
 
-REQUIREMENTS:
-- Minimum 6 resources total
-- At least 3 must be digital resources with exact web links
-- At least 2 must be physical/hands-on resources
-- All URLs must be complete and accurate (https://...)
-- Prioritize free, educational resources (Khan Academy, PhET, YouTube educational channels)
-- Resources must be directly relevant to the topic and grade level
+✗ "Today we will learn about Newton's Third Law. It states that for every action..." (Explaining, not engaging)
 
-DO NOT write:
-- "Online resources" (too vague)
-- "Internet" (not specific)
-- "Digital tools" (specify which ones)
-- URLs without resource names
---------------------------------------------------
-
-You MUST provide the EXACT curriculum standard for the topic.
-
-For NGSS (Next Generation Science Standards):
-- Include the full standard code (e.g., HS-PS2-1, MS-PS3-5)
-- Include the complete performance expectation text
-- Example: "HS-PS2-1: Analyze data to support the claim that Newton's second law of motion describes the mathematical relationship among the net force on a macroscopic object, its mass, and its acceleration."
-
-For AP College Board:
-- Include the specific Big Idea, Enduring Understanding, and Learning Objective
-- Example: "Big Idea 3: The interactions of an object with other objects can be described by forces. Learning Objective 3.A.1.1: Express the motion of an object using narrative, mathematical, and graphical representations."
-
-For Common Core Math:
-- Include the complete standard code and description
-- Example: "CCSS.MATH.CONTENT.HSA.REI.B.3: Solve linear equations and inequalities in one variable, including equations with coefficients represented by letters."
-
-For CSTA K-12 Computer Science Standards:
-- Include the grade level, standard code, and complete standard description
-- Example: "9-10: 2-DA-07 - Represent data using multiple encoding schemes."
-- Example: "6-8: 1B-CS-02 - Model the way information is transmitted, stored, and processed in digital systems."
-- Use appropriate grade bands: K-2, 3-5, 6-8, 9-10, 11-12
-
-If the standard type is not specified, use NGSS for science, Common Core for math, CSTA for computer science/ICT, and relevant national standards for other subjects.
+Do NOT explain concepts in the starter. Ask questions that reveal thinking.
 
 --------------------------------------------------
-12. GIFTED STUDENTS (ALN OBJECTIVE)
+6. TEACHING & LEARNING (STUDENT-CENTERED & DETAILED)
 --------------------------------------------------
 
-If gifted students are included, generate ONE ALN (Advanced Learning Needs) objective at DOK 4 level that:
-- Extends beyond the highest regular objective
-- Involves synthesis, creation, evaluation, or design
-- Connects to real-world UAE applications
-- Is achievable within the lesson timeframe
-- Should be a complete, actionable objective statement
+The teaching section must be STUDENT-CENTERED, not teacher-centered.
+
+STRUCTURE:
+1. Address starter responses (2-3 min)
+   - "Many of you noticed that... Let's explore why..."
+   
+2. Guided discovery (8-12 min)
+   - Use questioning to guide students to discover concepts
+   - Include think-pair-share moments
+   - Use concrete examples before abstract
+   - Build from simple → complex
+   
+3. Co-construct understanding (5-7 min)
+   - Students help build definitions, formulas, or models
+   - Use visual representations (diagrams, graphs, etc.)
+   - Check for understanding with quick formative checks
+   
+4. Practice with feedback (5-8 min)
+   - Worked example with student input
+   - Students try similar problem in pairs
+   - Immediate feedback and error correction
+
+TEACHING STRATEGIES TO INCLUDE:
+- Socratic questioning: "What do you notice? Why might that be?"
+- Think-Aloud: Model problem-solving verbally
+- Collaborative learning: "Discuss with your partner..."
+- Formative checks: Mini whiteboards, thumbs up/down, exit tickets
+- Multiple representations: Verbal, visual, symbolic, kinesthetic
+
+Example (GOOD):
+"Let's revisit your starter predictions. [Student name] said the table doesn't push back. Let's test this. I'll place this force sensor under the book. What do you observe on the display? [Students respond: It shows a force!] Exactly! The table DOES push back.
+
+Now, turn to your partner: If the table pushes up with the same force the book pushes down, why doesn't the book fly upward? [2 min discussion]
+
+[Listen to responses] Great thinking! The key is that these forces act on DIFFERENT objects. Let's draw this... [co-construct force diagram with students]
+
+The book experiences TWO forces: gravity (down) and the normal force from the table (up). These are balanced. But Newton's Third Law is about PAIRS of forces between TWO objects..."
+
+Example (BAD):
+"Newton's Third Law states that for every action, there is an equal and opposite reaction. This means forces come in pairs. For example, when you push on a wall, the wall pushes back on you with the same force. The forces are equal in magnitude but opposite in direction."
 
 --------------------------------------------------
-13. QUALITY CHECK (FINAL RULES)
+7. COOPERATIVE TASKS (DETAILED & DIFFERENTIATED)
 --------------------------------------------------
 
-Before finishing, ensure:
-- Introductory, Intermediate, and Mastery lessons would look clearly DIFFERENT
-- No section is empty or generic
-- Tasks are actionable by a real teacher
-- Cognitive demand increases across the lesson
-- Language is clear, professional, and age-appropriate
-- The curriculum standard is EXACT and COMPLETE with full code and description
-- If gifted students are included, ALN objective is present and detailed
-- My Identity domain/element is intelligently selected (NOT just Culture-Heritage by default)
-- Resources include at least 3 digital resources with exact, complete web links
-- All URLs are valid and complete (starting with https://)
+You must design THREE cooperative tasks with CLEAR, SPECIFIC instructions.
 
-If any requirement is missing, rewrite before responding.
+A. SUPPORT GROUP (Lowest DOK)
+- State EXACTLY what students do step-by-step
+- Provide scaffolds: sentence stems, graphic organizers, worked examples
+- Specify the deliverable (diagram, calculation, explanation)
+- Include teacher check-in points
+
+Example:
+"Support Group - Identifying Force Pairs (DOK 1-2)
+
+Task: Working in pairs, identify action-reaction force pairs in everyday scenarios.
+
+Materials: Force Pairs Worksheet, scenario cards
+
+Steps:
+1. Read each scenario card (e.g., 'A person sitting on a chair')
+2. Use the sentence stem: 'Object A pushes/pulls on Object B, so Object B pushes/pulls back on Object A'
+3. Draw arrows showing both forces in the pair
+4. Label each force with magnitude and direction
+
+Deliverable: Complete 5 scenarios with correctly labeled force pairs
+
+Teacher checkpoint: After scenario 2, check for correct labeling before continuing"
+
+B. CORE GROUP (Middle DOK)
+- Requires reasoning and application
+- Students must explain their thinking
+- Include a problem-solving component
+
+Example:
+"Core Group - Applying Newton's Third Law (DOK 2-3)
+
+Task: Calculate and analyze force pairs in collision scenarios.
+
+Scenario: A 1200 kg car traveling at 20 m/s collides with a stationary 800 kg car.
+
+Steps:
+1. Calculate the momentum before collision
+2. Using conservation of momentum, determine the velocities after collision
+3. Calculate the force each car exerts on the other during the 0.5 s collision
+4. Explain: Are the forces equal? Why or why not?
+5. Predict: What happens if the second car is moving toward the first car?
+
+Deliverable: Complete calculations with written explanations for steps 4-5
+
+Success criteria: Correct calculations (70%), clear explanation using Newton's Third Law"
+
+C. CHALLENGE GROUP (Highest DOK)
+- Requires analysis, evaluation, or design
+- Open-ended with multiple solution paths
+- Students must justify their decisions
+
+Example:
+"Challenge Group - Engineering Application (DOK 3-4)
+
+Task: Design a safety system that minimizes injury during a collision.
+
+Challenge: You are an automotive engineer. Design a car safety feature that reduces the impact force on passengers during a collision.
+
+Requirements:
+1. Research: How do airbags, crumple zones, and seatbelts use Newton's Third Law?
+2. Design: Sketch and explain your improved safety system
+3. Analyze: Calculate force reduction using F = Δp/Δt (show how increasing time decreases force)
+4. Evaluate: What are the trade-offs of your design? (cost, weight, effectiveness)
+
+Deliverable: Design sketch, force calculations, written justification (300 words)
+
+Extension: Present your design to the class and defend your choices based on physics principles"
 
 --------------------------------------------------
-OUTPUT FORMAT - RETURN ONLY VALID JSON
+8. INDEPENDENT TASKS (DETAILED & DOK-ALIGNED)
 --------------------------------------------------
 
-Return your response as valid JSON with this exact structure:
+You must design THREE independent tasks following the same differentiation approach.
+
+Each task must:
+- Be clearly different from cooperative tasks (not repetitive)
+- Specify the deliverable and success criteria
+- Include time allocation
+- Provide assessment guidance
+
+SUPPORT Level Example:
+"Independent Practice - Force Pairs in Daily Life (DOK 1-2)
+
+Task: Complete the Force Pairs Identification Sheet
+
+Instructions:
+1. For each of 8 scenarios, identify the action-reaction pair
+2. Draw and label forces with arrows
+3. Write one sentence explaining why the forces are equal
+
+Scenarios include: jumping, swimming, rocket launch, walking
+
+Success Criteria:
+- All 8 scenarios completed
+- Forces correctly identified (object A on B, object B on A)
+- Arrows show correct direction
+- Explanation uses key vocabulary (action, reaction, equal, opposite)
+
+Time: 15 minutes
+Assessment: Self-check with answer key, then teacher review"
+
+CORE Level Example:
+"Independent Practice - Collision Analysis (DOK 2-3)
+
+Task: Solve 4 collision problems involving momentum and force
+
+Problems:
+1. Head-on collision: Calculate forces during impact
+2. Rear-end collision: Determine acceleration of both vehicles
+3. Elastic collision: Apply conservation of momentum and energy
+4. Real-world application: Calculate forces in a sports scenario (choose: football tackle, hockey check, or billiards)
+
+For each problem:
+- Show all work and formulas
+- Explain: Why are the forces equal even if the masses differ?
+- Predict: How would changing one variable affect the outcome?
+
+Success Criteria:
+- Correct setup and formulas (25%)
+- Accurate calculations (40%)
+- Clear explanations (25%)
+- Predictions with reasoning (10%)
+
+Time: 20 minutes"
+
+CHALLENGE Level Example:
+"Independent Research & Analysis (DOK 3-4)
+
+Task: Investigate a real-world application of Newton's Third Law
+
+Choose one:
+A) Rocket propulsion in space exploration
+B) Recoil in firearms
+C) Swimming biomechanics
+D) Jet engine thrust
+
+Requirements:
+1. Research the physics behind your chosen application
+2. Create a detailed force diagram showing all action-reaction pairs
+3. Perform calculations demonstrating momentum/force relationships
+4. Analyze: Why is this application effective? What are limitations?
+5. Design: Propose an improvement based on physics principles
+
+Deliverable: 
+- 2-page report with diagrams and calculations
+- Must cite 2 reputable sources
+- Include a "conclusion" section evaluating the effectiveness
+
+Success Criteria:
+- Accurate physics concepts and calculations (40%)
+- Depth of analysis and critical thinking (30%)
+- Quality of improvement proposal (20%)
+- Clarity and organization (10%)
+
+Time: 25 minutes + homework completion option"
+
+--------------------------------------------------
+9. PLENARY (MULTI-LEVEL ASSESSMENT)
+--------------------------------------------------
+
+Create 4-5 questions spanning DOK levels to assess understanding.
+
+Format: [DOK Level] Question
+
+Examples:
+✓ [DOK 1] "Define Newton's Third Law in your own words"
+✓ [DOK 2] "Calculate the reaction force when a 50 kg person jumps with 400 N force"
+✓ [DOK 3] "Explain why a rocket can accelerate in space even though there's nothing to push against"
+✓ [DOK 4] "Design an experiment to prove Newton's Third Law using household items. Justify your method"
+
+--------------------------------------------------
+10. VOCABULARY, RESOURCES & SKILLS
+--------------------------------------------------
+
+VOCABULARY: List 5-8 key terms with brief definitions
+
+RESOURCES: Provide SPECIFIC, USABLE resources with links
+- Include: textbook pages, online simulations, videos, lab equipment
+- Format: "Resource Name - URL or description"
+
+Example:
+✓ "PhET Forces and Motion Simulation - https://phet.colorado.edu/en/simulation/forces-and-motion-basics"
+✓ "Khan Academy: Newton's Third Law - https://www.khanacademy.org/science/physics/forces-newtons-laws/newtons-laws-of-motion/v/newton-s-third-law-of-motion"
+
+SKILLS: List 3-5 transferable skills developed in this lesson
+
+--------------------------------------------------
+11. CROSS-CURRICULAR CONNECTIONS
+--------------------------------------------------
+
+MY IDENTITY (MANDATORY):
+You must select ONE domain and ONE element that genuinely connects to the topic.
+
+Available domains and elements:
+- Culture & Heritage: Cultural Symbols, National Identity, Emirati Traditions, Historical Narratives
+- Civic Studies: National Service, Community Cohesion, Civic Participation, Federal System
+- Character & Ethics: Moral Values, Ethical Decision-making, Resilience, Empathy
+
+YOU MUST:
+1. Select the MOST relevant domain and element
+2. Write a specific description (50-100 words) explaining the connection
+
+Example:
+Domain: Character & Ethics
+Element: Resilience
+Description: "Newton's Third Law teaches us about resilience through physics. Just as every action has an equal and opposite reaction, challenges in life create opportunities for growth. When we face obstacles (action), our response (reaction) determines our trajectory. In UAE's vision for the future, resilience is key - whether in engineering projects that overcome harsh desert conditions or in personal development. This lesson encourages students to see setbacks as forces that, when properly channeled, propel us forward."
+
+MORAL EDUCATION: Connect to Islamic values and character development (30-50 words)
+
+STEAM CONNECTIONS: How does this topic integrate Science, Technology, Engineering, Arts, Mathematics? (40-60 words)
+
+LINKS TO OTHER SUBJECTS: Identify 2-3 specific connections with other subjects
+
+ENVIRONMENTAL/SUSTAINABILITY: Connection to UAE's sustainability goals or environmental awareness (30-50 words)
+
+--------------------------------------------------
+12. REAL-WORLD CONNECTIONS
+--------------------------------------------------
+
+Provide 2-3 specific real-world applications relevant to UAE context:
+- Industry applications
+- Career connections  
+- Current UAE projects or initiatives
+- Everyday life examples
+
+Write 60-100 words total.
+
+--------------------------------------------------
+RESPONSE FORMAT
+--------------------------------------------------
+
+Return a valid JSON object with this EXACT structure:
 
 {
-  "standardText": "EXACT curriculum standard with full code and complete description",
+  "standardText": "EXACT standard code and full description",
   "objectives": [
-    {"dok": "DOK1", "text": "Objective 1 text here"},
-    {"dok": "DOK2", "text": "Objective 2 text here"},
-    {"dok": "DOK3", "text": "Objective 3 text here"}
+    {"text": "SMART objective 1 (DOK X)", "dok": "DOKX"},
+    {"text": "SMART objective 2 (DOK Y)", "dok": "DOKY"},
+    {"text": "SMART objective 3 (DOK Z)", "dok": "DOKZ"}
   ],
   "outcomes": {
-    "all": {"dok": "DOK1", "text": "All students outcome"},
-    "most": {"dok": "DOK2", "text": "Most students outcome"},
-    "some": {"dok": "DOK3", "text": "Some students outcome"}
+    "all": {"text": "ALL students will..."},
+    "most": {"text": "MOST students will..."},
+    "some": {"text": "SOME students will..."}
   },
-  "starter": "Detailed inquiry-based starter activity",
-  "teaching": "Detailed student-centered teaching component",
+  "vocabulary": ["term 1: definition", "term 2: definition", ...],
+  "resources": ["Resource 1 - link/description", "Resource 2 - link/description", ...],
+  "skills": "Skill 1, Skill 2, Skill 3",
+  "starter": "Detailed attention-grabbing starter activity with specific instructions",
+  "teaching": "Detailed student-centered teaching component with questioning, collaboration, and formative checks",
   "cooperative": {
-    "support": "Support group cooperative task - what they do and produce",
-    "average": "Average group cooperative task - application and reasoning",
-    "upper": "Upper group cooperative task - analysis and justification"
+    "support": "Detailed support group task with scaffolds and checkpoints",
+    "average": "Detailed core group task requiring reasoning",
+    "upper": "Detailed challenge group task requiring analysis/evaluation"
   },
   "independent": {
-    "support": "Support independent task - structured with scaffolding",
-    "average": "Average independent task - application with clear steps",
-    "upper": "Upper independent task - research/evaluation with higher-order thinking"
+    "support": "Detailed independent support task",
+    "average": "Detailed independent core task",
+    "upper": "Detailed independent challenge task"
   },
   "plenary": [
-    {"dok": "DOK1", "q": "Recall/explanation question"},
-    {"dok": "DOK2", "q": "Application question 1"},
-    {"dok": "DOK2", "q": "Application question 2"},
-    {"dok": "DOK3", "q": "Why/justify question"},
-    {"dok": "DOK4", "q": "Evaluate/transfer question"}
+    {"q": "Question text", "dok": "DOK1"},
+    {"q": "Question text", "dok": "DOK2"},
+    ...
   ],
-  "vocabulary": ["term1", "term2", "term3", "term4", "term5", "term6"],
-  "resources": [
-    "Khan Academy - Topic Name: https://www.khanacademy.org/...",
-    "PhET Simulation - Simulation Name: https://phet.colorado.edu/en/simulation/...",
-    "YouTube - Video Title: https://www.youtube.com/watch?v=...",
-    "Physical resource: Specific item name and quantity",
-    "Laboratory equipment: Specific items"
-  ],
-  "skills": "Critical thinking, Problem-solving, Collaboration, Analysis, Communication",
-  "realWorld": "Detailed paragraph showing real-world UAE applications with 3-4 specific examples",
   "identity": {
-    "domain": "Culture/Value/Citizenship",
-    "element": "Specific element from approved list",
-    "description": "2-3 sentence explanation linking element to topic in UAE context"
+    "domain": "Selected domain",
+    "element": "Selected element",
+    "description": "Specific connection explanation"
   },
-  "moralEducation": "2-3 sentences connecting topic to Islamic values and UAE moral education",
-  "steam": "2-3 sentences with explicit Science, Technology, Engineering, Arts, Mathematics connections",
-  "linksToSubjects": "Subject 1: Connection explanation\\nSubject 2: Connection explanation",
-  "environment": "2-3 sentences on UAE sustainability and environmental connections",
-  "alnObjective": "Complete DOK 4 extension objective for gifted students - only if gifted students are included, otherwise omit this field entirely"
-}`;
+  "moralEducation": "Connection to Islamic values...",
+  "steam": "STEAM integration explanation...",
+  "linksToSubjects": "Subject 1: Connection\\nSubject 2: Connection...",
+  "environment": "UAE sustainability connection...",
+  "realWorld": "Real-world applications in UAE context...",
+  "alnObjective": "Advanced objective for gifted students (if applicable)"
+}
 
-// ================= AI GENERATION =================
+Remember:
+- SMART objectives are mandatory
+- Standards must be EXACT and SPECIFIC
+- Tasks must be DETAILED with clear instructions
+- Starter must be ATTENTION-GRABBING
+- Teaching must be STUDENT-CENTERED
+- All sections must be inspection-ready
 
-async function generateExpertLesson({ grade, subject, topic, level, standardType, fileContent, giftedTalented }) {
-  const dokProfile = DOK_PROFILE[level.toLowerCase()] || DOK_PROFILE.intermediate;
-  
-  const userPrompt = `Grade: ${grade}
-Subject: ${subject}
-Topic: ${topic}
-Lesson Level: ${level}
-DOK Profile: ${dokProfile.join(", ")}
-Standard Type: ${standardType}
-Gifted Students: ${giftedTalented === 'yes' ? 'YES - MUST include alnObjective field with DOK 4 extension' : 'NO - Do NOT include alnObjective field'}
-${fileContent ? `Additional Context from uploaded file:\n${fileContent}` : ''}
+Generate the lesson plan now.`;
 
-CRITICAL INSTRUCTIONS:
+// ================= STATIC FILES =================
 
-1. CURRICULUM STANDARD:
-   - You MUST provide the EXACT, COMPLETE curriculum standard for "${topic}" in Grade ${grade} ${subject}
-   - CRITICAL: Match the standard TYPE to the SUBJECT and GRADE LEVEL:
-     * MATH topics → Use Common Core Math standards (CCSS.MATH.CONTENT) with grade-specific domains
-     * SCIENCE topics → Use NGSS standards (HS-PS, MS-PS, etc.) with grade bands
-     * ENGLISH topics → Use Common Core ELA standards (CCSS.ELA-LITERACY) with grade bands
-     * ICT/COMPUTER SCIENCE topics → Use CSTA K-12 Computer Science Standards with grade bands
-     * BUSINESS STUDIES → Use Common Core California Career Technical Education (CTE) standards
-     * ECONOMICS → Use Common Core California Economics standards (CA Content Standards Economics)
-     * PUBLIC SPEAKING → Use Common Core California Speaking/Listening standards (CCSS.ELA-LITERACY.SL)
-     * FRENCH → Use Common Core California World Languages standards (WL.CM)
-     * PHYSICAL EDUCATION → Use Common Core California Physical Education standards (CA PE Standards)
-     * VISUAL ARTS → Use Common Core California Visual Arts standards (CA VAPA)
-     * SOCIAL STUDIES → Use Common Core California History/Social Science standards
-   - For ${standardType}, include:
-     * Full standard code (e.g., CCSS.MATH.CONTENT.1.OA.C.6 for Grade 1 Math)
-     * Complete standard description/performance expectation
-   - DO NOT write generic text like "Standard for Grade ${grade}"
-   - DO NOT mix subject standards (NO physics standards for math topics!)
-   - Examples by SUBJECT and GRADE:
-     * GRADE 1 MATH (Single Digit Addition): "CCSS.MATH.CONTENT.1.OA.C.6: Add and subtract within 20, demonstrating fluency for addition and subtraction within 10. Use strategies such as counting on; making ten; decomposing a number leading to a ten; using the relationship between addition and subtraction; and creating equivalent but easier or known sums."
-     * GRADE 2 MATH (Two Digit Addition): "CCSS.MATH.CONTENT.2.NBT.B.5: Fluently add and subtract within 100 using strategies based on place value, properties of operations, and/or the relationship between addition and subtraction."
-     * GRADE 3 MATH (Multiplication): "CCSS.MATH.CONTENT.3.OA.A.1: Interpret products of whole numbers, e.g., interpret 5 × 7 as the total number of objects in 5 groups of 7 objects each."
-     * GRADE 4 MATH (Multi-digit Multiplication): "CCSS.MATH.CONTENT.4.NBT.B.5: Multiply a whole number of up to four digits by a one-digit whole number, and multiply two two-digit numbers, using strategies based on place value and the properties of operations."
-     * GRADE 5 MATH (Fractions): "CCSS.MATH.CONTENT.5.NF.A.1: Add and subtract fractions with unlike denominators by replacing given fractions with equivalent fractions in such a way as to produce an equivalent sum or difference of fractions with like denominators."
-     * GRADE 6 MATH (Ratios): "CCSS.MATH.CONTENT.6.RP.A.1: Understand the concept of a ratio and use ratio language to describe a ratio relationship between two quantities."
-     * GRADE 7 MATH (Proportional Relationships): "CCSS.MATH.CONTENT.7.RP.A.2: Recognize and represent proportional relationships between quantities."
-     * GRADE 8 MATH (Linear Equations): "CCSS.MATH.CONTENT.8.EE.C.7: Solve linear equations in one variable."
-     * GRADE 9-12 MATH (Quadratic Equations): "CCSS.MATH.CONTENT.HSA.REI.B.4: Solve quadratic equations in one variable."
-     * GRADE 1 SCIENCE (Plant Parts): "1-LS1-1: Use materials to design a solution to a human problem by mimicking how plants and animals use their external parts to help them survive, grow, and meet their needs."
-     * GRADE 1 SCIENCE (Plant Needs): "K-LS1-1: Use observations to describe patterns of what plants and animals (including humans) need to survive."
-     * GRADE 2 SCIENCE (Plant Life Cycles): "2-LS2-1: Plan and conduct an investigation to determine if plants need sunlight and water to grow."
-     * GRADE 3 SCIENCE (Plant Structures): "3-LS1-1: Develop models to describe that organisms have unique and diverse life cycles but all have in common birth, growth, reproduction, and death."
-     * GRADE 4 SCIENCE (Plant Structures): "4-LS1-1: Construct an argument that plants and animals have internal and external structures that function to support survival, growth, behavior, and reproduction."
-     * GRADE 5 SCIENCE (Plant Matter): "5-PS3-1: Use models to describe that energy in animals' food was once energy from the sun."
-     * GRADE 1 ENGLISH (Story Writing): "CCSS.ELA-LITERACY.W.1.3: Write narratives in which they recount two or more appropriately sequenced events, include some details regarding what happened, use temporal words to signal event order, and provide some sense of closure."
-     * GRADE 1 ENGLISH (Reading Stories): "CCSS.ELA-LITERACY.RL.1.2: Retell stories, including key details, and demonstrate understanding of their central message or lesson."
-     * GRADE 1 ENGLISH (Story Elements): "CCSS.ELA-LITERACY.RL.1.3: Describe characters, settings, and major events in a story, using key details."
-     * GRADE 2 ENGLISH (Story Writing): "CCSS.ELA-LITERACY.W.2.3: Write narratives in which they recount a well-elaborated event or short sequence of events, include details to describe actions, thoughts, and feelings, use temporal words to signal event order, and provide a sense of closure."
-     * GRADE 3 ENGLISH (Story Writing): "CCSS.ELA-LITERACY.W.3.3: Write narratives to develop real or imagined experiences or events using effective technique, descriptive details, and clear event sequences."
-     * ICT (Data Representation): "9-10: 2-DA-07 - Represent data using multiple encoding schemes."
-     * ICT (Algorithms): "6-8: 1B-AP-10 - Create programs that include sequences, events, loops, and conditionals."
-     * BUSINESS STUDIES (Marketing): "CA CTE 9.1.1: Demonstrate marketing concepts and strategies in a business environment."
-     * ECONOMICS (Supply/Demand): "CA Content Standards Economics 12.2.1: Analyze the relationship between supply, demand, and price in competitive markets."
-     * PUBLIC SPEAKING (Presentations): "CCSS.ELA-LITERACY.SL.9-10.4: Present information, findings, and supporting evidence clearly, concisely, and logically."
-     * FRENCH (Conversation): "WL.CM.9-10.1: Engage in conversations on a variety of topics using appropriate vocabulary and grammar."
-     * PHYSICAL EDUCATION (Fitness): "CA PE Standards 3.4: Assess and maintain a level of physical fitness to improve health and performance."
-     * VISUAL ARTS (Drawing): "CA VAPA 2.1: Create original works of art using various media and techniques."
-
-2. MY IDENTITY DOMAIN/ELEMENT:
-   - INTELLIGENTLY select the most relevant domain (Culture/Value/Citizenship) based on "${topic}"
-   - For ${subject} on "${topic}", think: What UAE context fits best?
-   - DO NOT default to Culture-Heritage unless truly relevant
-   - Examples:
-     * Lab/experiment topics → Citizenship - Conservation (safety, waste)
-     * Data/statistics → Value - Respect (privacy, ethics)
-     * Environmental topics → Citizenship - Conservation
-     * Literature/language → Culture - Arabic Language or Heritage
-     * Community projects → Citizenship - Belonging or Volunteering
-   - Provide 2-3 specific sentences about UAE connection
-
-3. RESOURCES WITH WEB LINKS:
-   - REQUIRED: At least 3 digital resources with EXACT, COMPLETE web links
-   - Format: "Resource Name: https://full-url-here"
-   - Prioritize: Khan Academy, PhET, YouTube (educational channels), Desmos, GeoGebra
-   - Also include 2-3 physical resources (equipment, manipulatives)
-   - All URLs must be real, complete, and start with https://
-   - Example: "Khan Academy - Newton's Laws: https://www.khanacademy.org/science/physics/forces-newtons-laws"
-
-5. ENHANCED TEACHING COMPONENT (10-MINUTE MAXIMUM):
-   - Create a detailed, student-centered teaching sequence (MAXIMUM 10 minutes)
-   - Focus specifically on: What NEW knowledge and/or skill will you teach? How?
-   - Structure as a direct instruction mini-lesson with clear timing:
-   
-   **FORMAT:**
-   "Minutes 0-2: [Hook/Engagement] - Students will [specific action] to [activate prior knowledge]
-   Minutes 2-7: [Direct Instruction] - I will teach [specific new knowledge/skill] by [method] using [materials]
-   Minutes 7-10: [Guided Practice] - Students will [demonstrate understanding] through [specific activity]"
-   
-   **EXAMPLE FOR GRADE 1 STORY WRITING:**
-   "Minutes 0-2: Hook/Engagement - Students will listen to a short story without ending and predict what happens next, sharing their ideas with a partner
-   Minutes 2-7: Direct Instruction - I will teach story sequencing by modeling how to use 'first, then, next, finally' on a story map, using picture cards and think-aloud strategy
-   Minutes 7-10: Guided Practice - Students will create their own 4-part story map using picture prompts, practicing temporal words with sentence starters"
-   
-   **STUDENT-CENTERED REQUIREMENTS:**
-   - Use "Students will..." language throughout
-   - Include specific student actions and responses
-   - Describe exactly what students will DO, not just what teacher will say
-   - Include hands-on activities where students manipulate materials
-   - Incorporate think-pair-share or turn-and-talk opportunities
-   - Provide specific examples of student work/products
-   - Include formative assessment checks (thumbs up, whiteboards, etc.)
-   
-   **GRADE-SPECIFIC STRATEGIES:**
-   - Grades K-2: Concrete manipulatives, movement, songs/rhymes, drawing, picture prompts
-   - Grades 3-5: Models, diagrams, structured inquiry, peer teaching, graphic organizers
-   - Grades 6-8: Investigations, data collection, argumentation, modeling
-   - Grades 9-12: Analysis, design challenges, research, presentations
-   
-   **MUST INCLUDE:**
-   - Specific timing breakdown (0-2, 2-7, 7-10 minutes)
-   - Clear learning objective for this 10-minute segment
-   - Student actions for each time segment
-   - Materials students will use
-   - How you'll check for understanding
-   - What students will produce/show as evidence of learning
-
-6. GIFTED STUDENTS ALN:
-   ${giftedTalented === 'yes' ? `
-   - REQUIRED: Generate "alnObjective" field with complete DOK 4 statement
-   - Format: "Gifted students will [action verb] [topic] by [method] to [outcome with UAE connection]"
-   - Example: "Gifted students will design and evaluate a scaled experimental model to investigate apparent weight changes in accelerated systems, synthesizing Newton's laws with engineering applications in UAE's high-speed transportation infrastructure"
-   - Must be actionable, specific, and extend beyond regular objectives
-   ` : `
-   - DO NOT include "alnObjective" field in JSON response
-   - Omit this field entirely from output
-   `}
-
-Generate a complete, detailed lesson plan following all requirements above.
-Return ONLY valid JSON - no explanations, no markdown, just the JSON object.`;
-
-  console.log('Calling AI with Expert Prompt...');
-  console.log('Groq API Key present:', !!process.env.GROQ_API_KEY);
-  console.log('API Key length:', process.env.GROQ_API_KEY?.length || 0);
-  
-  let attempts = 0;
-  const maxAttempts = 2;
-  
-  while (attempts < maxAttempts) {
-    attempts++;
-    console.log(`AI attempt ${attempts}/${maxAttempts}`);
-    
-    try {
-      const completion = await client.chat.completions.create({
-        model: "mixtral-8x7b-32768",
-        messages: [
-          { role: "system", content: EXPERT_SYSTEM_PROMPT },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 2500
-      });
-
-      const raw = completion.choices[0].message.content;
-      console.log('AI Response received:', raw.substring(0, 200) + '...');
-      
-      // Extract JSON from response
-      const jsonStart = raw.indexOf('{');
-      const jsonEnd = raw.lastIndexOf('}') + 1;
-      const jsonStr = raw.slice(jsonStart, jsonEnd);
-      
-      const result = JSON.parse(jsonStr);
-      console.log('✅ AI generation successful on attempt', attempts);
-      return result;
-      
-    } catch (error) {
-      console.error(`AI attempt ${attempts} failed:`, error.message);
-      console.error('Full error:', error);
-      
-      if (attempts >= maxAttempts) {
-        console.log('All AI attempts failed, using fallback...');
-        break;
-      }
-      
-      // Wait 2 seconds before retry
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-  }
-  
-  // Fallback response with proper template
-  const fallbackResponse = {
-      standardText: `${standardType} Standard for Grade ${grade} ${subject}: ${topic}`,
-      objectives: [
-        { dok: "DOK1", text: `Students will identify and define key concepts related to ${topic}` },
-        { dok: "DOK2", text: `Students will explain and apply ${topic} concepts in structured situations` },
-        { dok: "DOK3", text: `Students will analyze and evaluate ${topic} applications in real-world contexts` }
-      ],
-      outcomes: {
-        all: { dok: "DOK1", text: `All students will recognize and describe basic ${topic} concepts` },
-        most: { dok: "DOK2", text: `Most students will apply ${topic} principles to solve problems` },
-        some: { dok: "DOK3", text: `Some students will analyze and evaluate complex ${topic} scenarios` }
-      },
-      starter: `What do you already know about ${topic}? Write down 2-3 ideas and share with your partner.`,
-      teaching: `Today we will explore ${topic} through interactive demonstrations, guided practice, and collaborative learning. We will build from basic concepts to practical applications.`,
-      cooperative: {
-        support: `Work in pairs to create a concept map showing key ideas about ${topic}. Use provided templates and examples to guide your thinking.`,
-        average: `In small groups, analyze a case study involving ${topic} and create a presentation explaining the main concepts and their relationships.`,
-        upper: `Design and evaluate a solution to a real-world problem using ${topic} principles. Justify your choices and predict potential outcomes.`
-      },
-      independent: {
-        support: `Complete structured practice exercises on ${topic} with step-by-step guidance and immediate feedback.`,
-        average: `Apply ${topic} concepts to solve 3-5 problems of increasing complexity, showing all work and explaining your reasoning.`,
-        upper: `Research and critically evaluate how ${topic} is used in UAE industry or society. Write a 500-word analysis with recommendations.`
-      },
-      plenary: [
-        { dok: "DOK1", q: `What are the 3 most important concepts about ${topic} we learned today?` },
-        { dok: "DOK2", q: `How would you explain ${topic} to someone who has never studied it before?` },
-        { dok: "DOK2", q: `What are the practical applications of ${topic} in daily life?` },
-        { dok: "DOK3", q: `Why is ${topic} important for your future career or further studies?` },
-        { dok: "DOK4", q: `How could ${topic} be improved or innovated to better serve society?` }
-      ],
-      vocabulary: ["terminology", "application", "analysis", "synthesis", "evaluation", "implementation"],
-      resources: [
-        `Khan Academy - ${topic} Tutorials: https://www.khanacademy.org/search?q=${encodeURIComponent(topic)}`,
-        `YouTube - Educational Videos: https://www.youtube.com/results?search_query=${encodeURIComponent(topic)}+explained`,
-        `Interactive simulations and digital tools for ${topic}`,
-        `Grade-appropriate textbook materials and workbooks`,
-        `Hands-on learning materials and laboratory equipment`,
-        `Online assessment tools and practice platforms`
-      ],
-      skills: "Critical thinking, problem-solving, collaboration, communication, digital literacy, analysis",
-      realWorld: `${topic} is essential in UAE's development, with applications in renewable energy, smart cities, healthcare innovation, and sustainable technology. Students will explore how ${topic} contributes to UAE Vision 2070 and global competitiveness.`,
-      identity: {
-        domain: subject.includes('Science') ? "Citizenship" : subject.includes('Math') ? "Value" : "Culture",
-        element: subject.includes('Science') ? "Conservation" : subject.includes('Math') ? "Respect" : "Arabic Language",
-        description: `${topic} connects to UAE's ${subject.includes('Science') ? 'environmental conservation and sustainability efforts' : subject.includes('Math') ? 'commitment to precision and innovation' : 'rich cultural heritage and linguistic traditions'}, promoting ${subject.includes('Science') ? 'responsible resource management' : subject.includes('Math') ? 'analytical thinking and ethical data use' : 'cultural understanding and communication excellence'}.`
-      },
-      moralEducation: `${topic} integrates with Islamic values through ethical considerations, responsible innovation, and commitment to serving humanity. Students learn to apply knowledge with integrity and compassion.`,
-      steam: `${topic} demonstrates the integration of Science and Technology through practical applications, Engineering principles in problem-solving, Arts in creative solutions, and Mathematics in quantitative analysis and modeling.`,
-      linksToSubjects: `Mathematics: Quantitative analysis and problem-solving\nEnglish: Technical communication and documentation\nScience: Scientific method and inquiry-based learning`,
-      environment: `${topic} supports UAE's sustainability goals through efficient resource use, environmental protection, and development of green technologies that align with national climate action initiatives.`
-    };
-    
-    // Add ALN objective if gifted students are selected
-    if (giftedTalented === 'yes') {
-      fallbackResponse.alnObjective = `Gifted students will design and implement an innovative ${topic} project that addresses a real UAE challenge, synthesizing advanced concepts with cutting-edge technology to create a scalable solution with measurable impact (DOK 4).`;
-    }
-    
-    return fallbackResponse;
-  }
-
-// ================= ROUTES =================
-
-app.use(express.static(path.join(__dirname)));
-
+// Serve frontend
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'enhanced-lesson-planner.html'));
+  const htmlPath = path.join(__dirname, 'enhanced-lesson-planner.html');
+  if (fs.existsSync(htmlPath)) {
+    res.sendFile(htmlPath);
+  } else {
+    res.status(404).json({ 
+      error: 'Frontend not found', 
+      message: 'enhanced-lesson-planner.html not found' 
+    });
+  }
 });
 
-app.post('/api/generate-lesson', upload.single('file'), async (req, res) => {
+// ================= API ROUTE =================
+
+app.post("/api/generate", upload.single("file"), async (req, res) => {
   console.log('\n========== NEW LESSON GENERATION REQUEST ==========');
   
   try {
-    const { date, semester, grade, subject, topic, lessonLevel, standardType, period, giftedTalented } = req.body;
-    
-    console.log('Request Data:', { grade, subject, topic, level: lessonLevel, standardType, giftedTalented });
+    const {
+      subject, grade, topic, level, period,
+      date, semester, lessonType, giftedTalented, standardType
+    } = req.body;
+
+    console.log('Request parameters:', {
+      subject, grade, topic, level, lessonType, giftedTalented
+    });
 
     // Validate required fields
-    if (!grade || !subject || !topic || !lessonLevel) {
-      console.error('Validation failed: Missing required fields');
-      return res.status(400).json({ 
-        error: "Missing required fields: grade, subject, topic, or level",
-        received: { grade, subject, topic, lessonLevel }
+    if (!subject || !grade || !topic || !level) {
+      console.error('Missing required fields');
+      return res.status(400).json({
+        error: 'Missing required fields',
+        required: ['subject', 'grade', 'topic', 'level']
       });
     }
 
-    // Extract file content if uploaded
-    let fileContent = '';
+    // Determine standards framework
+    const standardsFramework = getStandardsFramework(subject, grade);
+    console.log('Standards framework selected:', standardsFramework);
+
+    // Get DOK distribution
+    const dokLevels = DOK_PROFILE[level.toLowerCase()] || DOK_PROFILE.introductory;
+    console.log('DOK levels for', level, ':', dokLevels);
+
+    // Extract syllabus content if file provided
+    let syllabusContent = "";
     if (req.file) {
       console.log('Processing uploaded file:', req.file.originalname);
+      syllabusContent = await extractFileContent(req.file.path);
+      console.log('Syllabus content extracted:', syllabusContent.substring(0, 200) + '...');
+      
+      // Clean up uploaded file
       try {
-        fileContent = await extractFileContent(req.file.path);
         fs.unlinkSync(req.file.path);
-      } catch (fileError) {
-        console.error('File processing error:', fileError);
-        // Continue without file content
+      } catch (err) {
+        console.error('File cleanup error:', err);
       }
     }
 
-    // Generate lesson with AI
-    console.log('Generating expert lesson plan...');
-    let aiData;
+    // Build AI prompt
+    const userPrompt = `Generate a comprehensive lesson plan with the following specifications:
+
+LESSON DETAILS:
+- Subject: ${subject}
+- Grade: ${grade}
+- Topic: ${topic}
+- Lesson Level: ${level}
+- Standards Framework: ${standardsFramework}
+- DOK Distribution: ${dokLevels.join(', ')}
+${syllabusContent ? `\nSYLLABUS CONTEXT:\n${syllabusContent}\n` : ''}
+${giftedTalented === 'yes' ? '\nINCLUDE: Advanced Learning Needs (ALN) objective for gifted and talented students\n' : ''}
+
+CRITICAL REQUIREMENTS:
+
+1. STANDARDS: Provide the EXACT standard code and complete description from ${standardsFramework}
+   - Format: "[CODE]: [Full Standard Description]"
+   - Example: "HS-PS2-1: Analyze data to support the claim that Newton's second law..."
+
+2. OBJECTIVES: Write 3 SMART objectives
+   - Specific, Measurable, Achievable, Relevant, Time-bound
+   - Match DOK levels: ${dokLevels.join(', ')}
+   - Use precise action verbs
+
+3. STARTER: Create an attention-grabbing, inquiry-based starter
+   - Hook students immediately
+   - Use prediction, demonstration, or surprising fact
+   - NO explanation, only questioning
+
+4. TEACHING: Design student-centered teaching component
+   - Use guided discovery and Socratic questioning
+   - Include think-pair-share and formative checks
+   - Build understanding collaboratively
+
+5. TASKS: Create detailed, differentiated tasks
+   - Cooperative: Support, Core, Challenge groups
+   - Independent: Support, Core, Challenge levels
+   - Each task must include: specific steps, deliverables, success criteria
+
+6. REAL-WORLD: Connect to UAE context and applications
+
+Generate the complete lesson plan following the JSON format specified.`;
+
+    console.log('\n=== CALLING AI API ===');
+    console.log('Prompt length:', userPrompt.length, 'characters');
+
+    // Call AI API
+    let aiResponse;
     try {
-      aiData = await generateExpertLesson({
-        grade,
-        subject,
-        topic,
-        level: lessonLevel,
-        standardType: standardType || 'NGSS + AP College Board',
-        fileContent,
-        giftedTalented
+      const completion = await client.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "system",
+            content: EXPERT_SYSTEM_PROMPT
+          },
+          {
+            role: "user",
+            content: userPrompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 8000,
+        response_format: { type: "json_object" }
       });
-    } catch (aiError) {
-      console.error('AI generation failed:', aiError.message);
+
+      aiResponse = completion.choices[0]?.message?.content;
+      console.log('AI response received:', aiResponse ? 'YES' : 'NO');
+      console.log('Response length:', aiResponse?.length || 0, 'characters');
+
+    } catch (apiError) {
+      console.error('AI API Error:', apiError);
       return res.status(500).json({
         error: 'AI generation failed',
-        details: aiError.message,
-        stack: process.env.NODE_ENV === 'development' ? aiError.stack : undefined
+        details: apiError.message
       });
     }
 
-    console.log('AI Generation Complete');
-    console.log('Objectives:', aiData.objectives?.length || 0);
-    console.log('Standard Text:', aiData.standardText?.substring(0, 80) || 'MISSING');
-    console.log('Identity:', aiData.identity?.domain + ' - ' + aiData.identity?.element || 'MISSING');
-    console.log('Resources:', aiData.resources?.length || 0);
-    console.log('ALN Objective:', aiData.alnObjective ? 'PRESENT' : 'NOT PRESENT');
-    console.log('Teaching Component Length:', aiData.teaching?.length || 0);
-    console.log('Full Teaching Component:', aiData.teaching || 'MISSING');
-    console.log('Used AI or Fallback:', aiData.standardText?.includes('Standard for Grade') ? 'FALLBACK' : 'AI GENERATED');
+    if (!aiResponse) {
+      console.error('No AI response received');
+      return res.status(500).json({
+        error: 'No response from AI',
+        details: 'The AI did not generate any content'
+      });
+    }
 
-    // Validate critical fields
-    if (!aiData.standardText || aiData.standardText.length < 30) {
-      console.warn('⚠️ WARNING: Standard text is too short or missing');
-    }
-    
-    if (!aiData.identity || !aiData.identity.domain || !aiData.identity.element) {
-      console.error('❌ ERROR: My Identity domain/element missing - AI failed');
-      throw new Error('My Identity not properly generated. Please try again.');
-    }
-    
-    if (aiData.identity.domain === 'Culture' && aiData.identity.element === 'Heritage' && subject !== 'History' && subject !== 'Social Studies') {
-      console.warn('⚠️ WARNING: AI defaulted to Culture-Heritage - may not be most relevant');
-    }
-    
-    if (!aiData.resources || aiData.resources.length < 6) {
-      console.warn('⚠️ WARNING: Insufficient resources generated');
-    }
-    
-    const hasWebLinks = aiData.resources?.some(r => r.includes('http'));
-    if (!hasWebLinks) {
-      console.warn('⚠️ WARNING: No web links found in resources');
-    }
-    
-    if (giftedTalented === 'yes' && !aiData.alnObjective) {
-      console.warn('⚠️ WARNING: Gifted students selected but ALN objective missing');
+    // Parse AI response
+    let aiData;
+    try {
+      aiData = JSON.parse(aiResponse);
+      console.log('AI response parsed successfully');
+      console.log('Generated objectives:', aiData.objectives?.length || 0);
+      console.log('Standard text:', aiData.standardText?.substring(0, 100) || 'MISSING');
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
+      console.error('AI Response:', aiResponse.substring(0, 500));
+      return res.status(500).json({
+        error: 'Failed to parse AI response',
+        details: parseError.message,
+        aiResponse: aiResponse.substring(0, 500)
+      });
     }
 
     // Prepare template data
@@ -773,12 +799,12 @@ app.post('/api/generate-lesson', upload.single('file'), async (req, res) => {
       value: safe(getMonthlyValue(date)),
 
       // Standards - Now uses AI-generated exact standard
-      standardText: safe(aiData.standardText || `${standardType || 'NGSS + AP College Board'} - Please provide specific standard code and description for Grade ${grade} ${subject}: ${topic}`),
+      standardText: safe(aiData.standardText || `${standardsFramework} - Standard for Grade ${grade} ${subject}: ${topic}`),
 
-      // Objectives
-      objective1: safe(aiData.objectives?.[0]?.text || `Students will demonstrate understanding of ${topic}`),
-      objective2: safe(aiData.objectives?.[1]?.text || `Students will apply concepts from ${topic}`),
-      objective3: safe(aiData.objectives?.[2]?.text || `Students will analyze applications of ${topic}`),
+      // SMART Objectives
+      objective1: safe(aiData.objectives?.[0]?.text || `Students will demonstrate understanding of ${topic} (${dokLevels[0]})`),
+      objective2: safe(aiData.objectives?.[1]?.text || `Students will apply concepts from ${topic} (${dokLevels[1]})`),
+      objective3: safe(aiData.objectives?.[2]?.text || `Students will analyze applications of ${topic} (${dokLevels[2]})`),
 
       // Outcomes
       outcomeAll: safe(aiData.outcomes?.all?.text || `All students will identify key concepts of ${topic}`),
@@ -790,62 +816,62 @@ app.post('/api/generate-lesson', upload.single('file'), async (req, res) => {
       resources: safe(
         Array.isArray(aiData.resources) 
           ? aiData.resources.join('\n') 
-          : aiData.resources || 'Khan Academy resources\nPhET simulations\nYouTube educational videos\nTextbook materials\nLaboratory equipment'
+          : aiData.resources || 'Educational resources and materials'
       ),
       skills: safe(aiData.skills || 'Critical thinking, problem-solving, collaboration'),
 
-      // Activities
-      starter: safe(aiData.starter || 'Inquiry-based starter to activate prior knowledge and reveal misconceptions'),
-      teaching: safe(aiData.teaching || 'Student-centered teaching component with guided discovery and formative checks'),
+      // Activities - Enhanced
+      starter: safe(aiData.starter || 'Attention-grabbing inquiry-based starter to activate prior knowledge and reveal misconceptions'),
+      teaching: safe(aiData.teaching || 'Detailed student-centered teaching component with guided discovery, Socratic questioning, and formative checks'),
 
-      // Cooperative tasks
-      coopUpper: safe(aiData.cooperative?.upper || 'Advanced analysis task requiring justification and evaluation'),
-      coopAverage: safe(aiData.cooperative?.average || 'Structured application task with reasoning'),
-      coopSupport: safe(aiData.cooperative?.support || 'Scaffolded task with templates and peer support'),
+      // Cooperative tasks - Detailed and differentiated
+      coopUpper: safe(aiData.cooperative?.upper || 'Challenge: Advanced analysis task requiring justification, evaluation, and design thinking'),
+      coopAverage: safe(aiData.cooperative?.average || 'Core: Structured application task requiring reasoning and explanation'),
+      coopSupport: safe(aiData.cooperative?.support || 'Support: Scaffolded task with graphic organizers, sentence stems, and peer support'),
 
-      // Independent tasks
-      indepUpper: safe(aiData.independent?.upper || 'Research and evaluation task with higher-order thinking'),
-      indepAverage: safe(aiData.independent?.average || 'Application task with clear steps and expectations'),
-      indepSupport: safe(aiData.independent?.support || 'Guided practice with graphic organizers and feedback'),
+      // Independent tasks - Detailed and differentiated
+      indepUpper: safe(aiData.independent?.upper || 'Challenge: Research and evaluation task with higher-order thinking and real-world application'),
+      indepAverage: safe(aiData.independent?.average || 'Core: Application task with clear steps, success criteria, and self-assessment'),
+      indepSupport: safe(aiData.independent?.support || 'Support: Guided practice with templates, worked examples, and immediate feedback'),
 
       // Plenary
       plenary: safe(
         Array.isArray(aiData.plenary) 
           ? aiData.plenary.map((p, i) => `${i + 1}. (${p.dok}) ${p.q}`).join('\n')
-          : aiData.plenary || 'Review questions at multiple DOK levels'
+          : aiData.plenary || 'Multi-level review questions assessing understanding'
       ),
 
-      // Cross-curricular - REMOVED hardcoded Culture-Heritage fallback
+      // Cross-curricular
       myIdentity: safe(
         aiData.identity && aiData.identity.domain && aiData.identity.element && aiData.identity.description
           ? `Domain: ${aiData.identity.domain} - Element: ${aiData.identity.element}\n\n${aiData.identity.description}`
-          : `ERROR: My Identity not generated properly. Domain and Element must be selected by AI based on topic relevance.`
+          : `Domain and Element must be selected by AI based on topic relevance.`
       ),
       identityDomain: safe(aiData.identity?.domain || 'ERROR'),
       identityElement: safe(aiData.identity?.element || 'ERROR'),
-      identityDescription: safe(aiData.identity?.description || 'ERROR: My Identity description missing.'),
+      identityDescription: safe(aiData.identity?.description || 'My Identity description missing.'),
       
       moralEducation: safe(aiData.moralEducation || 'Connection to Islamic values and moral education'),
       steam: safe(aiData.steam || 'Science, Technology, Engineering, Arts, Mathematics connections'),
-      linksToSubjects: safe(aiData.linksToSubjects || 'Mathematics: Quantitative analysis\nEnglish: Technical writing'),
+      linksToSubjects: safe(aiData.linksToSubjects || 'Cross-curricular connections'),
       environment: safe(aiData.environment || 'UAE sustainability and environmental connections'),
 
       // Real world
       realWorld: safe(aiData.realWorld || 'Real-world applications in UAE context with industry and career connections'),
 
-      // ALN for Gifted Students - Always populate when gifted students are selected
+      // ALN for Gifted Students
       alnObjectives: giftedTalented === 'yes' 
-  ? safe(aiData.alnObjective || aiData.objectives?.alnObjective || `Gifted students will synthesize ${topic} concepts through advanced research, designing innovative solutions that evaluate real-world applications in UAE's technological and scientific development (DOK 4).`)
-  : ''
-    }
+        ? safe(aiData.alnObjective || `Gifted students will synthesize ${topic} concepts through advanced research, designing innovative solutions (DOK 4).`)
+        : ''
+    };
 
     console.log('Template data prepared');
     console.log('Standard Text:', templateData.standardText.substring(0, 100) + '...');
+    console.log('Objective 1:', templateData.objective1.substring(0, 100) + '...');
     console.log('My Identity:', templateData.identityDomain + ' - ' + templateData.identityElement);
-    console.log('Resources with links:', templateData.resources.includes('http') ? 'YES' : 'NO');
-    console.log('ALN Objectives:', templateData.alnObjectives ? 'POPULATED (' + templateData.alnObjectives.length + ' chars)' : 'EMPTY');
+    console.log('ALN Objectives:', templateData.alnObjectives ? 'POPULATED' : 'EMPTY');
 
-    // Load template - use absolute path for Render compatibility
+    // Load template
     const templatePath = path.join(__dirname, 'LESSON PLAN TEMPLATE.docx');
     
     console.log('Looking for template at:', templatePath);
@@ -928,6 +954,15 @@ app.post('/api/generate-lesson', upload.single('file'), async (req, res) => {
   }
 });
 
+// Test endpoint
+app.get('/api/test', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Enhanced Expert Lesson Plan Server is running',
+    timestamp: new Date().toISOString() 
+  });
+});
+
 // ================= ERROR HANDLING MIDDLEWARE =================
 
 app.use((error, req, res, next) => {
@@ -946,23 +981,15 @@ app.use((req, res) => {
   });
 });
 
-// Test endpoint
-app.get('/api/test', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'Expert Lesson Plan Server is running',
-    timestamp: new Date().toISOString() 
-  });
-});
-
 // ================= START SERVER =================
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log('═══════════════════════════════════════════════');
-  console.log('   EXPERT LESSON PLAN SERVER');
+  console.log('   ENHANCED EXPERT LESSON PLAN SERVER');
   console.log('═══════════════════════════════════════════════');
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📁 Template: ${path.join(__dirname, 'LESSON PLAN TEMPLATE.docx')}`);
   console.log(`🤖 AI: Groq llama-3.3-70b-versatile`);
+  console.log(`✨ Features: SMART Objectives, Exact Standards, Student-Centered`);
   console.log('═══════════════════════════════════════════════\n');
 });
