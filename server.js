@@ -113,8 +113,8 @@ function getStandardsFramework(subject, grade) {
   // Mathematics
   if (subjectLower.includes('math') || subjectLower.includes('calculus') || 
       subjectLower.includes('algebra') || subjectLower.includes('geometry')) {
-    if (subjectLower.includes('calculus')) return STANDARDS_FRAMEWORK.mathematics.calculus;
     if (subjectLower.includes('pre-calculus')) return STANDARDS_FRAMEWORK.mathematics['pre-calculus'];
+    if (subjectLower.includes('calculus')) return STANDARDS_FRAMEWORK.mathematics.calculus;
     return STANDARDS_FRAMEWORK.mathematics.default;
   }
   
@@ -193,92 +193,94 @@ Each objective must be:
 - RELEVANT: Directly connected to the standard and topic
 - TIME-BOUND: Achievable within the lesson timeframe
 
-Format: "Students will [ACTION VERB] [SPECIFIC CONTENT] [CONTEXT/CONDITION] (DOK X)"
-
-Examples:
-✓ "Students will calculate action-reaction force pairs in everyday scenarios using Newton's Third Law (DOK 2)"
-✓ "Students will analyze momentum conservation in collision systems to predict post-collision velocities (DOK 3)"
-✗ "Students will understand Newton's Third Law" (NOT measurable)
-✗ "Students will learn about forces" (TOO vague)
-
-Each objective must:
-- Match the assigned DOK level
-- Be specific to the lesson topic
-- Use precise action verbs appropriate to the DOK level
-
-Do NOT repeat objectives using different words.
-Do NOT use vague verbs such as "understand", "learn", "know about", or "be aware of".
+Format: "[ACTION VERB] [SPECIFIC CONTENT] [CONTEXT/CONDITION] (DOK X)"
 
 --------------------------------------------------
 3. STANDARDS ALIGNMENT (CRITICAL)
 --------------------------------------------------
 
 You MUST provide the EXACT, SPECIFIC standard code and full description.
-
-The standard framework has been provided to you. Based on this framework:
-
-FORMAT REQUIRED:
-"[STANDARD CODE]: [Complete Standard Description]
-
-Example: Newton's Laws of Motion"
-
-Examples:
-✓ "HS-PS2-1: Analyze data to support the claim that Newton's second law of motion describes the mathematical relationship among the net force on a macroscopic object, its mass, and its acceleration."
-
-✗ "NGSS + AP College Board Standard for Grade 11 Physics: third law of motion" (TOO VAGUE)
-
-YOU MUST:
-1. Identify the exact standard code (e.g., HS-PS2-1, CCSS.MATH.HSF-IF.C.7, W.11-12.2)
-2. Write the COMPLETE standard description verbatim
-3. Add the example topic if helpful for clarity
+FORMAT REQUIRED: "[STANDARD CODE]: [Complete Standard Description]"
 
 --------------------------------------------------
 4. DIFFERENTIATED LEARNING OUTCOMES
 --------------------------------------------------
 
 Outcomes must be derived directly from the learning objectives.
-
-You must write:
 - ALL students outcome → lowest DOK objective
 - MOST students outcome → middle DOK objective
 - SOME students outcome → highest DOK objective
-
-Rules:
-- Outcomes must NOT repeat the learning objectives verbatim
-- Outcomes must be measurable and specific
-- Cognitive demand must clearly increase from ALL → MOST → SOME
-- Each outcome should describe what students will PRODUCE or DEMONSTRATE
-
-Examples:
-✓ ALL: "All students will identify and label action-reaction force pairs in at least 3 everyday examples"
-✓ MOST: "Most students will calculate and explain force magnitudes in collision scenarios with 80% accuracy"
-✓ SOME: "Some students will design and evaluate a solution to reduce collision impact using momentum principles"
 
 --------------------------------------------------
 5. STARTER (ATTENTION-GRABBING & INQUIRY-BASED)
 --------------------------------------------------
 
 The starter must be IMMEDIATELY engaging and thought-provoking.
-
 Requirements:
 ✓ Hook students' attention in the first 10 seconds
 ✓ Use a prediction question, demonstration, surprising fact, or real-world scenario
 ✓ Activate prior knowledge and reveal misconceptions
-✓ Connect directly to the lesson topic
 ✓ Occur BEFORE any explanation
 
-ENHANCED STRATEGIES:
-- Demonstration: "Watch as I [action]. What do you predict will happen?"
-- Paradox: "If you push a wall, why doesn't it move? The wall pushes back with equal force!"
-- Real-world connection: "Have you ever wondered why..."
-- Student experience: "Think about the last time you..."
-- Visual stimulus: Show an intriguing image/video then ask a question
+--------------------------------------------------
+6. TEACHING & LEARNING (STUDENT-CENTERED & HIGHLY DETAILED)
+--------------------------------------------------
+
+The teaching section must be a step-by-step narrative of the learning journey. It should NOT be a summary.
+
+STRUCTURE (MINIMUM 300 WORDS):
+1. Address starter responses: How will you use student answers to bridge to the new concept?
+2. Guided discovery: List specific Socratic questions you will ask.
+3. Modeling/Think-Aloud: Describe exactly what you will demonstrate and the "internal monologue" you will share with students.
+4. Formative Checks: Describe 2-3 specific moments where you will check for understanding (e.g., "Show me on your fingers 1-5...", "Turn and tell your partner the difference between...").
+5. Scaffolding: Explain how you will simplify the concept for struggling learners during the explanation.
+
+--------------------------------------------------
+7. COOPERATIVE TASKS (CLEAR DIFFERENTIATION)
+--------------------------------------------------
+
+You must design THREE distinct cooperative tasks. They MUST NOT be variations of the same activity; they must represent different COGNITIVE LEVELS and DOK depths.
+
+A. SUPPORT GROUP (Low DOK - Foundation)
+- Focus: Identification, labeling, or simple recall.
+- Scaffolds: Must include sentence stems, word banks, or partially completed templates.
+- Instructions: Detailed, step-by-step.
+
+B. AVERAGE/CORE GROUP (Mid DOK - Application)
+- Focus: Application of concepts to new scenarios, multi-step problem solving.
+- Reasoning: Must require students to explain "why" or "how".
+
+C. UPPER/CHALLENGE GROUP (High DOK - Analysis/Creation)
+- Focus: Critical evaluation, designing solutions, or predicting outcomes in complex systems.
+- Complexity: Must involve variables, trade-offs, or synthesis of multiple ideas.
+
+EACH TASK MUST INCLUDE:
+- Specific Title
+- Clear Goal
+- Step-by-step Student Instructions
+- Required Deliverable
+- Teacher Checkpoint (When will you intervene?)
+
+--------------------------------------------------
+8. INDEPENDENT TASKS (DETAILED & PROGRESSIVE)
+--------------------------------------------------
+
+Independent tasks must be DIFFERENT from cooperative tasks. Do not repeat the same activity.
+
+A. SUPPORT: Focused on fluency and basic accuracy with heavy scaffolding.
+B. AVERAGE: Focused on independent application without immediate support.
+C. UPPER: Focused on extension, abstraction, or peer-critique preparation.
+
+--------------------------------------------------
+RESPONSE FORMAT
+--------------------------------------------------
+
+Return a valid JSON object with the specified structure. Ensure all strings are long and detailed.
 
 Examples:
-✓ "I'm going to place this book on the table. The book pushes down on the table with its weight. Question: Does the table push back? If yes, why doesn't the book fall through? Turn to your partner and discuss for 30 seconds."
+"I'm going to place this book on the table. The book pushes down on the table with its weight. Question: Does the table push back? If yes, why doesn't the book fall through? Turn to your partner and discuss for 30 seconds."
 
-✓ "Watch this slow-motion video of a car crash test. What forces do you observe? What happens to the car's momentum? Write down 2 observations."
-
+"Watch this slow-motion video of a car crash test. What forces do you observe? What happens to the car's momentum? Write down 2 observations."
 ✗ "Today we will learn about Newton's Third Law. It states that for every action..." (Explaining, not engaging)
 
 Do NOT explain concepts in the starter. Ask questions that reveal thinking.
@@ -410,8 +412,7 @@ You must design THREE independent tasks following the same differentiation appro
 
 Each task must:
 - Be clearly different from cooperative tasks (not repetitive)
-- Specify the deliverable and success criteria
-- Include time allocation
+- Specify the deliverable 
 - Provide assessment guidance
 
 SUPPORT Level Example:
@@ -451,13 +452,6 @@ For each problem:
 - Explain: Why are the forces equal even if the masses differ?
 - Predict: How would changing one variable affect the outcome?
 
-Success Criteria:
-- Correct setup and formulas (25%)
-- Accurate calculations (40%)
-- Clear explanations (25%)
-- Predictions with reasoning (10%)
-
-Time: 20 minutes"
 
 CHALLENGE Level Example:
 "Independent Research & Analysis (DOK 3-4)
@@ -481,14 +475,6 @@ Deliverable:
 - 2-page report with diagrams and calculations
 - Must cite 2 reputable sources
 - Include a "conclusion" section evaluating the effectiveness
-
-Success Criteria:
-- Accurate physics concepts and calculations (40%)
-- Depth of analysis and critical thinking (30%)
-- Quality of improvement proposal (20%)
-- Clarity and organization (10%)
-
-Time: 25 minutes + homework completion option"
 
 --------------------------------------------------
 9. PLENARY (MULTI-LEVEL ASSESSMENT)
@@ -525,30 +511,34 @@ SKILLS: List 3-5 transferable skills developed in this lesson
 --------------------------------------------------
 
 MY IDENTITY (MANDATORY):
-You must select ONE domain and ONE element that genuinely connects to the topic.
+Culture – Use when the topic involves:
 
-Available domains and elements:
-- Culture & Heritage: Cultural Symbols, National Identity, Emirati Traditions, Historical Narratives
-- Civic Studies: National Service, Community Cohesion, Civic Participation, Federal System
-- Character & Ethics: Moral Values, Ethical Decision-making, Resilience, Empathy
+Language, literature, and communication
 
-YOU MUST:
-1. Select the MOST relevant domain and element
-2. Write a specific description (50-100 words) explaining the connection
+Historical events, traditions, and cultural practices
 
-Example:
-Domain: Character & Ethics
-Element: Resilience
-Description: "Newton's Third Law teaches us about resilience through physics. Just as every action has an equal and opposite reaction, challenges in life create opportunities for growth. When we face obstacles (action), our response (reaction) determines our trajectory. In UAE's vision for the future, resilience is key - whether in engineering projects that overcome harsh desert conditions or in personal development. This lesson encourages students to see setbacks as forces that, when properly channeled, propel us forward."
+UAE heritage, archaeology, and traditional knowledge
+Elements: Arabic Language, History, Heritage
 
-MORAL EDUCATION: Connect to Islamic values and character development (30-50 words)
+Values – Use when the topic involves:
 
-STEAM CONNECTIONS: How does this topic integrate Science, Technology, Engineering, Arts, Mathematics? (40-60 words)
+Ethical decision-making and moral reasoning
 
-LINKS TO OTHER SUBJECTS: Identify 2-3 specific connections with other subjects
+Interpersonal skills, empathy, and understanding others
 
-ENVIRONMENTAL/SUSTAINABILITY: Connection to UAE's sustainability goals or environmental awareness (30-50 words)
+Global understanding and international cooperation
+Elements: Respect, Compassion, Global Understanding
 
+Citizenship – Use when the topic involves:
+
+Environmental issues, sustainability, and conservation
+
+Community participation and civic responsibility
+
+National identity and social responsibility
+Elements: Belonging, Volunteering, Conservation
+
+Select the domain that best represents the topic’s main learning intent, even if secondary aspects overlap with other domains.
 --------------------------------------------------
 12. REAL-WORLD CONNECTIONS
 --------------------------------------------------
@@ -583,16 +573,16 @@ Return a valid JSON object with this EXACT structure:
   "resources": ["Resource 1 - link/description", "Resource 2 - link/description", ...],
   "skills": "Skill 1, Skill 2, Skill 3",
   "starter": "Detailed attention-grabbing starter activity with specific instructions",
-  "teaching": "Detailed student-centered teaching component with questioning, collaboration, and formative checks",
+  "teaching": "Detailed student-centered teaching component (300+ words) including specific dialogue, Socratic questions, modeling/think-aloud, and 2-3 formative checks.",
   "cooperative": {
-    "support": "Detailed support group task with scaffolds and checkpoints",
-    "average": "Detailed core group task requiring reasoning",
-    "upper": "Detailed challenge group task requiring analysis/evaluation"
+    "support": "Foundation Level (DOK 1-2): Step-by-step instructions, specific scaffolds (sentence stems/word banks), and a clear deliverable.",
+    "average": "Application Level (DOK 2-3): Reasoning-based task requiring multi-step problem solving and 'how/why' explanations.",
+    "upper": "Analysis Level (DOK 3-4): Complex task requiring critical evaluation, design thinking, or synthesis of multiple variables."
   },
   "independent": {
-    "support": "Detailed independent support task",
-    "average": "Detailed independent core task",
-    "upper": "Detailed independent challenge task"
+    "support": "Fluency-focused task with heavy scaffolding and templates.",
+    "average": "Independent application task requiring clear mastery demonstration.",
+    "upper": "Extension/Abstraction task requiring high-level critical thinking."
   },
   "plenary": [
     {"q": "Question text", "dok": "DOK1"},
@@ -697,33 +687,23 @@ LESSON DETAILS:
 ${syllabusContent ? `\nSYLLABUS CONTEXT:\n${syllabusContent}\n` : ''}
 ${giftedTalented === 'yes' ? '\nINCLUDE: Advanced Learning Needs (ALN) objective for gifted and talented students\n' : ''}
 
-CRITICAL REQUIREMENTS:
+CRITICAL REQUIREMENTS FOR DEPTH & DIFFERENTIATION:
 
-1. STANDARDS: Provide the EXACT standard code and complete description from ${standardsFramework}
-   - Format: "[CODE]: [Full Standard Description]"
-   - Example: "HS-PS2-1: Analyze data to support the claim that Newton's second law..."
+1. TEACHING COMPONENT: This must be a detailed narrative (300+ words). 
+   - DO NOT just list steps. 
+   - Describe the dialogue, the specific questions you will ask, and how you will handle student misconceptions.
+   - Explicitly state how you will model the concept.
 
-2. OBJECTIVES: Write 3 SMART objectives
-   - Specific, Measurable, Achievable, Relevant, Time-bound
-   - Match DOK levels: ${dokLevels.join(', ')}
-   - Use precise action verbs
+2. COOPERATIVE TASKS: Create 3 CLEARLY DIFFERENT tasks.
+   - The Support task must be foundational (DOK 1-2).
+   - The Average task must be application-based (DOK 2-3).
+   - The Challenge task must be analytical or creative (DOK 3-4).
+   - They MUST NOT be the same task with different difficulty; they should be different activities.
 
-3. STARTER: Create an attention-grabbing, inquiry-based starter
-   - Hook students immediately
-   - Use prediction, demonstration, or surprising fact
-   - NO explanation, only questioning
+3. INDEPENDENT TASKS: These must be distinct from the cooperative tasks. 
+   - Ensure they provide a path for students to demonstrate individual mastery at their specific level.
 
-4. TEACHING: Design student-centered teaching component
-   - Use guided discovery and Socratic questioning
-   - Include think-pair-share and formative checks
-   - Build understanding collaboratively
-
-5. TASKS: Create detailed, differentiated tasks
-   - Cooperative: Support, Core, Challenge groups
-   - Independent: Support, Core, Challenge levels
-   - Each task must include: specific steps, deliverables, success criteria
-
-6. REAL-WORLD: Connect to UAE context and applications
+4. STANDARDS: Provide the EXACT standard code and complete description from ${standardsFramework}.
 
 Generate the complete lesson plan following the JSON format specified.`;
 
@@ -773,7 +753,9 @@ Generate the complete lesson plan following the JSON format specified.`;
     // Parse AI response
     let aiData;
     try {
-      aiData = JSON.parse(aiResponse);
+      // Clean potential markdown blocks from AI response
+      const cleanJson = aiResponse.replace(/```json\n?|\n?```/g, '').trim();
+      aiData = JSON.parse(cleanJson);
       console.log('AI response parsed successfully');
       console.log('Generated objectives:', aiData.objectives?.length || 0);
       console.log('Standard text:', aiData.standardText?.substring(0, 100) || 'MISSING');
@@ -993,3 +975,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`✨ Features: SMART Objectives, Exact Standards, Student-Centered`);
   console.log('═══════════════════════════════════════════════\n');
 });
+
+
