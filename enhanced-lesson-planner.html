@@ -192,7 +192,7 @@
             <div id="message" class="message"></div>
             
             <div class="form-container">
-                <form id="lessonForm">
+                <form id="lessonForm" enctype="multipart/form-data">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="date">Date</label>
@@ -245,6 +245,8 @@
                                 <option value="ICT">Information Technology</option>
                                 <option value="Art">Visual Arts</option>
                                 <option value="Public Speaking">Public Speaking</option>
+                                <option value="Islamic Studies">Islamic Studies</option>
+                                <option value="Physical Education">Physical Education</option>
                             </select>
                         </div>
                     </div>
@@ -275,6 +277,7 @@
                                 <option value="NGSS">NGSS</option>
                                 <option value="NGSS + AP College Board">NGSS + AP College Board</option>
                                 <option value="CSTA">CSTA K-12 Computer Science Standards</option>
+                                <option value="MOE Standard">MOE Standard (UAE Ministry of Education)</option>
                             </select>
                         </div>
                         
@@ -295,7 +298,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>
-                                <input type="checkbox" id="gifted" name="gifted"> Gifted & Talented
+                                <input type="checkbox" id="gifted" name="giftedTalented" value="yes"> Gifted & Talented
                             </label>
                         </div>
                     </div>
@@ -314,8 +317,7 @@
             
             <div class="loading" id="loading">
                 <div class="spinner"></div>
-                <p>Generating your AI-powered lesson plan... (up to 30 seconds)</p>
-                <p style="font-size: 12px; color: #666;">Creating professional, standards-aligned content</p>
+                <p>Generating your AI-powered lesson plan...</p>
             </div>
         </div>
     </div>
@@ -328,8 +330,9 @@
             
             const formData = new FormData(e.target);
             
-            // Handle gifted checkbox properly
-            if (document.getElementById('gifted').checked) {
+            // Handle giftedTalented checkbox - ensure it's always sent
+            const giftedCheckbox = document.getElementById('gifted');
+            if (giftedCheckbox.checked) {
                 formData.set('giftedTalented', 'yes');
             } else {
                 formData.set('giftedTalented', 'no');
