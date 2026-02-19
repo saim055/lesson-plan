@@ -80,6 +80,70 @@ const DOK_PROFILE = {
   mastery: ["DOK3", "DOK4", "DOK4"]
 };
 
+// ================= UAE ISLAMIC CURRICULUM MAP =================
+const UAE_ISLAMIC_CURRICULUM = {
+  "1": [
+    "Allah, My lord", "Surat Al-Fatihah", "Truthfulness is the way to paradise", "Pillars of Islam", "Surat Al-Feel",
+    "The Birth of Prophet Muhammad Peace be upon him", "Allah, The All -beneficent", "Surat Al-Flaq", "Bed time supplication(Duaa)",
+    "Abu Hurairah, my Allah be pleased with him", "Wudu (minor Ablution)", "Kindness to Animals", "Surat AL-Ikhlas",
+    "Pillars of Islamic Belief", "Islamic Etiquette of Cleanliness", "A Muslim Helps his Brother", "I love my Family",
+    "Our Prophet Muhammad, peace be upon him, Nurtured by his Grandfather and Uncle", "Allah: the Great Creator", "Surat An-Nas",
+    "My Prayer is the Light of my Life", "Righteousness is Good Character", "Surat Al-Maʻoun", "I Love the Creatures of my Lord",
+    "Surat Al-Masad", "Asmaʻ bint Abi Bakr As-Sideeq (MayAllah be pleased with them)", "Etiquette of Eating", "Mercy",
+    "Surat Al-Kawthar", "Tolerance", "“The best amongst you is the one who learns the Qurʼan and teaches it.”", "I Love Agriculture",
+    "Surat An-Nasr", "Slavery/worship", "Family roles", "Water blessings", "Adam's story", "Love for God", "Basic needs", "Religious/national days"
+  ],
+  "2": [
+    "Allah, The Most Kind (Al-Lateef), The All-Aware One (Al-Khabeer)", "Surat Al-'Asr", "Belief in the Messengers, peace be upon them.",
+    "Surat Al-Kafirun (The Disbelievers).", "I love good things for my brother.", "An Enriching Story: Contentment is an Inexhaustible Treasure.",
+    "Purity and Nullifiers of Ablution (Wudoo')", "Surat Al-Sharh (Solace).", "The Prophet, peace be upon him, Loves Work.",
+    "Performing Good Ablution (Wudoo')", "Ali bin Abi Talib, may Allah be pleased with him.", "An Enriching Story: The Purity of Hearts",
+    "I Pray(1)", "Excellence of Prayer.", "Muhammad, the Truthful, the Honest", "Surat Quraysh.", "Honesty.", "I Pray.(2)",
+    "An Enriching Story: The Master of Morals.", "The Virtue of Reciting the Holy Qur’an", "Surat Al-Qadr", "Fatimah رﺿﻲ ﷲ ﻋﻨﮭﺎ",
+    "Surat Ad-Duha", "Dining Etiquette", "The Best Acts in Islam", "An enriching story", "Allah, the Almighty Creator",
+    "Some Islamic Manners", "Some of the Prophet’s Manners .", "Surat Ash-Shams", "Respect for Others",
+    "Prayer for Blessings onthe Prophet  ﺻﻠﻰ ﷲ ﻋﻠﯾﮫ وﺳﻠم", "Surat At-Takathur", "The Grace of Plants", "All my nation Enter Paradise",
+    "I Love my Neighbors", "Surat Al-Adiyat", "An enriching story", "Honoring parents/kindness to young", "Volunteering", "Seeking knowledge",
+    "Honesty", "Depending on God", "Self-confidence", "Noah's story", "Plants' blessings", "Tolerance among desires"
+  ],
+  "3": [
+    "Honoring the Parents", "Belief in Angels", "Fasting", "Respecting elderly/young", "Honesty", "Generosity", "Treatment with old/young",
+    "Cooperation/volunteering", "Obedience to God", "Abraham's story", "Tolerance (forgiving)", "Environment maintenance/cleanliness"
+  ],
+  "4": [
+    "Belief in Divine Books", "Congregational Prayer", "Obligations/sunan", "Courage", "Religious duties", "Pleasing Allah",
+    "Participation in society", "Moses' story", "Tolerance gains", "Universe blessings/creation"
+  ],
+  "5": [
+    "Belief in the Day of Judgment", "The Migration to Al-Madinah", "Voluntary work", "Duaa", "Determination", "Spreading knowledge",
+    "Family care", "Truth/honesty/generosity/courage/modesty/brotherhood", "Jesus' story", "Tenderness", "Graces (water/universe relation)"
+  ],
+  "6": [
+    "The Greater Battle of Badr", "Scientific Thinking in Islam", "Work as worship", "Allah's observation", "Modesty",
+    "Appreciation of handwork", "Away from vanity", "Chastity/lowering gaze", "Consultation", "Messengers", "Tolerance in Sunnah", "Animals"
+  ],
+  "7": [
+    "Resurrection and Raising up", "Thinking in Islam", "Seeking knowledge", "Faithfulness", "Brotherhood", "Devotion",
+    "Away from selfishness/individualism", "Nations/tribes", "Tolerance/morals", "Water/marine"
+  ],
+  "8": [
+    "Belief in Divine Decree and Predestination", "Social Cohesion in Islam", "Advice", "Kindness/righteousness", "Justice",
+    "Dislike injustice", "Human dignity", "Tolerance (human rights in Islam)", "Environment (signs in agriculture/plants)"
+  ],
+  "9": [
+    "Zakat in Islam", "Justice in Islam", "Time participation/waqf", "Self-accountability", "Spreading knowledge", "Family building"
+  ],
+  "10": [
+    "The Mind in Islam", "Chastity in Islam"
+  ],
+  "11": [
+    "Shura (Consultation) in Islam", "Islam and Social Networking"
+  ],
+  "12": [
+    "Responsibility in Islam", "The Islamic Economic System"
+  ]
+};
+
 // ================= STANDARDS MAPPING =================
 const STANDARDS_FRAMEWORK = {
   mathematics: {
@@ -104,11 +168,27 @@ const STANDARDS_FRAMEWORK = {
   'computer science': {
     default: 'Computer Science Teachers Association (CSTA) K-12 Standards'
   },
+  'islamic studies': {
+    default: 'UAE Ministry of Education Islamic Education Standards'
+  },
+  'physical education': {
+    default: 'UAE Ministry of Education Physical and Health Education Curriculum'
+  },
   default: 'California Common Core State Standards'
 };
 
 function getStandardsFramework(subject, grade) {
   const subjectLower = subject.toLowerCase();
+  
+  // Islamic Studies
+  if (subjectLower.includes('islamic')) {
+    return STANDARDS_FRAMEWORK['islamic studies'].default;
+  }
+  
+  // Physical Education
+  if (subjectLower.includes('physical') || subjectLower.includes('pe')) {
+    return STANDARDS_FRAMEWORK['physical education'].default;
+  }
   
   // Mathematics
   if (subjectLower.includes('math') || subjectLower.includes('calculus') || 
@@ -195,12 +275,20 @@ Each objective must be:
 
 Format: "[ACTION VERB] [SPECIFIC CONTENT] [CONTEXT/CONDITION] (DOK X)"
 
+For Islamic Studies, ensure objectives align with UAE MOE standards and use verbs like: recite, explain the meaning of, apply morals from, analyze lessons from (e.g., "Explain the meaning of Surah Al-Ikhlas", "Recite Surah with correct Tajweed", "Analyze moral lessons from the Hijrah"). Keep faith-based and curriculum-aligned; avoid scientific DOK verbs.
+
+For Physical Education, use verbs like: demonstrate, perform, analyze techniques, evaluate strategies, develop fitness plans.
+
 --------------------------------------------------
 3. STANDARDS ALIGNMENT (CRITICAL)
 --------------------------------------------------
 
 You MUST provide the EXACT, SPECIFIC standard code and full description.
 FORMAT REQUIRED: "[STANDARD CODE]: [Complete Standard Description]"
+
+For Islamic Studies, use ONLY UAE Ministry of Education Islamic Education standards from the national curriculum document, with domains like Values and Objectives of Islam, Divine Revelation, etc. Example: "UAE MOE Islamic Domain 1 Pivot 1 Grade 1: Understand worship via creatures; recite/memorize Surahs/Hadiths."
+
+For Physical Education, use UAE MOE Physical and Health Education Curriculum standards, focusing on movement skills, fitness, health knowledge. Example: "UAE MOE PE 1.1.1: Demonstrates knowledge of circulatory, respiratory, muscular, skeletal systems."
 
 --------------------------------------------------
 4. DIFFERENTIATED LEARNING OUTCOMES
@@ -338,7 +426,7 @@ You must design THREE cooperative tasks with CLEAR, SPECIFIC instructions.
 
 A. SUPPORT GROUP (Lowest DOK)
 - State EXACTLY what students do step-by-step
-- Provide scaffolds: sentence stems, graphic organizers, worked examples
+- Provide scaffolds: sentence stems, word banks, worked examples
 - Specify the deliverable (diagram, calculation, explanation)
 - Include teacher check-in points
 
@@ -452,6 +540,14 @@ For each problem:
 - Explain: Why are the forces equal even if the masses differ?
 - Predict: How would changing one variable affect the outcome?
 
+CORE Level Example (continued):
+Success Criteria:
+- All calculations accurate
+- Explanations demonstrate understanding of Newton's Third Law
+- Predictions show conceptual application
+
+Time: 20 minutes
+Assessment: Teacher rubric focusing on accuracy (50%), explanation quality (30%), prediction depth (20%)"
 
 CHALLENGE Level Example:
 "Independent Research & Analysis (DOK 3-4)
@@ -475,6 +571,9 @@ Deliverable:
 - 2-page report with diagrams and calculations
 - Must cite 2 reputable sources
 - Include a "conclusion" section evaluating the effectiveness
+
+Time: 25 minutes (or homework extension)
+Assessment: Holistic rubric: Research depth (20%), Diagram accuracy (20%), Calculations (20%), Analysis quality (20%), Design creativity (20%)"
 
 --------------------------------------------------
 9. PLENARY (MULTI-LEVEL ASSESSMENT)
@@ -503,6 +602,10 @@ RESOURCES: Provide SPECIFIC, USABLE resources with links
 Example:
 ✓ "PhET Forces and Motion Simulation - https://phet.colorado.edu/en/simulation/forces-and-motion-basics"
 ✓ "Khan Academy: Newton's Third Law - https://www.khanacademy.org/science/physics/forces-newtons-laws/newtons-laws-of-motion/v/newton-s-third-law-of-motion"
+
+For Islamic Studies, include resources like UAE MOE Portal: https://www.moe.gov.ae/, Quran.com: https://quran.com/, IslamicFinder: https://www.islamicfinder.org/quran/
+
+For Physical Education, include SHAPE America: https://www.shapeamerica.org/, PE videos: https://www.youtube.com/c/PEwithCoach, equipment like balls, cones.
 
 SKILLS: List 3-5 transferable skills developed in this lesson
 
@@ -539,6 +642,8 @@ National identity and social responsibility
 Elements: Belonging, Volunteering, Conservation
 
 Select the domain that best represents the topic’s main learning intent, even if secondary aspects overlap with other domains.
+For Islamic Studies, prioritize Values (e.g., Compassion for moral lessons) or Citizenship (Belonging for national identity in UAE).
+
 --------------------------------------------------
 12. REAL-WORLD CONNECTIONS
 --------------------------------------------------
@@ -975,5 +1080,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`✨ Features: SMART Objectives, Exact Standards, Student-Centered`);
   console.log('═══════════════════════════════════════════════\n');
 });
+
 
 
