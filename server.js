@@ -40,6 +40,26 @@ const client = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
+// ================= MODEL CONFIGURATION =================
+// Best models prioritized for quality and rate limit management
+const MODELS = [
+  // Primary models - best quality
+  "llama-3.3-70b-versatile",
+  "meta-llama/llama-4-scout-17b-16e-instruct",
+  "qwen/qwen3-32b",
+  "qwen/qwen3.6-27b",
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
+  "groq/compound",
+  "groq/compound-mini",
+  "llama-3.1-8b-instant"
+];
+
+// Rate limit tracking
+let modelUsage = {};
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 200; // ms between requests to avoid rate limits
+
 // ================= HELPER FUNCTIONS =================
 const safe = (v) => (v === undefined || v === null ? "" : String(v));
 
@@ -153,6 +173,93 @@ app.get('/', (req, res) => {
   fs.existsSync(htmlPath) ? res.sendFile(htmlPath) : res.status(404).json({ error: 'Frontend not found' });
 });
 
+// ================= AI REQUEST FUNCTION WITH FALLBACK =================
+async function makeAIRequestWithFallback(userPrompt, retryCount = 0) {
+  // Rate limiting
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest));
+  }
+  lastRequestTime = Date.now();
+
+  // Build list of available models (exclude those recently rate-limited)
+  const availableModels = MODELS.filter(model => {
+    const usage = modelUsage[model] || { failures: 0, lastFailure: 0 };
+    // If model failed more than 3 times in last 5 minutes, skip it
+    if (usage.failures >= 3 && (Date.now() - usage.lastFailure) < 300000) {
+      return false;
+    }
+    return true;
+  });
+
+  if (availableModels.length === 0) {
+    // Reset model usage if all models are failing
+    console.log('All models rate limited, resetting usage tracking');
+    modelUsage = {};
+    // Wait 30 seconds before retry
+    await new Promise(resolve => setTimeout(resolve, 30000));
+    return makeAIRequestWithFallback(userPrompt, retryCount + 1);
+  }
+
+  // Try models in order of priority
+  for (let i = 0; i < availableModels.length; i++) {
+    const model = availableModels[i];
+    console.log(`Attempting with model: ${model} (attempt ${i + 1}/${availableModels.length})`);
+    
+    try {
+      const completion = await client.chat.completions.create({
+        model: model,
+        messages: [
+          { role: "system", content: EXPERT_SYSTEM_PROMPT },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 8000,
+        response_format: { type: "json_object" }
+      });
+
+      // Success - reset failure count for this model
+      modelUsage[model] = { failures: 0, lastFailure: 0, lastSuccess: Date.now() };
+      console.log(`✅ Success with model: ${model}`);
+      return completion;
+
+    } catch (error) {
+      console.error(`❌ Error with model ${model}:`, error.message);
+      
+      // Track failure
+      if (!modelUsage[model]) {
+        modelUsage[model] = { failures: 0, lastFailure: 0 };
+      }
+      modelUsage[model].failures += 1;
+      modelUsage[model].lastFailure = Date.now();
+
+      // Check if this is a rate limit error
+      if (error.message && (error.message.includes('rate_limit') || error.message.includes('429'))) {
+        console.log(`Rate limit hit for ${model}, moving to next model`);
+        // Wait longer for rate limit - exponential backoff
+        const waitTime = Math.min(1000 * Math.pow(2, retryCount + i), 10000);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+
+      // For other errors, try next model
+      if (i < availableModels.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+  }
+
+  // If we've tried all models and failed, retry with backoff
+  if (retryCount < 3) {
+    console.log(`All models failed, retrying (attempt ${retryCount + 1}/3)`);
+    await new Promise(resolve => setTimeout(resolve, 5000 * (retryCount + 1)));
+    return makeAIRequestWithFallback(userPrompt, retryCount + 1);
+  }
+
+  throw new Error('All AI models failed after multiple attempts. Please try again later.');
+}
+
 // ================= API ROUTE =================
 app.post("/api/generate", upload.single("file"), async (req, res) => {
   console.log('\n========== NEW LESSON GENERATION REQUEST ==========');
@@ -185,17 +292,9 @@ ${giftedTalented === 'yes' ? 'Include ALN objective for gifted students' : ''}
 
 Return JSON only following the exact structure in system prompt.`;
 
-    const completion = await client.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: EXPERT_SYSTEM_PROMPT },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 8000,
-      response_format: { type: "json_object" }
-    });
-
+    // Use the robust AI request with fallback
+    const completion = await makeAIRequestWithFallback(userPrompt);
+    
     const aiResponse = completion.choices[0]?.message?.content;
     const cleanJson = aiResponse.replace(/```json\n?|\n?```/g, '').trim();
     const aiData = JSON.parse(cleanJson);
@@ -262,9 +361,29 @@ Return JSON only following the exact structure in system prompt.`;
   }
 });
 
+// ================= MODEL STATUS ENDPOINT =================
+app.get('/api/models/status', (req, res) => {
+  const status = {};
+  MODELS.forEach(model => {
+    const usage = modelUsage[model] || { failures: 0, lastFailure: 0, lastSuccess: 0 };
+    status[model] = {
+      available: !(usage.failures >= 3 && (Date.now() - usage.lastFailure) < 300000),
+      failures: usage.failures || 0,
+      lastFailure: usage.lastFailure ? new Date(usage.lastFailure).toISOString() : 'never',
+      lastSuccess: usage.lastSuccess ? new Date(usage.lastSuccess).toISOString() : 'never'
+    };
+  });
+  res.json({ models: status });
+});
+
 // Test endpoint
 app.get('/api/test', (req, res) => {
-  res.json({ status: 'OK', message: 'Enhanced Expert Lesson Plan Server is running' });
+  res.json({ 
+    status: 'OK', 
+    message: 'Enhanced Expert Lesson Plan Server is running',
+    models: MODELS,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // ================= START SERVER =================
@@ -273,10 +392,12 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(' ENHANCED EXPERT LESSON PLAN SERVER');
   console.log('═══════════════════════════════════════════════');
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`🤖 AI: Groq llama-3.3-70b-versatile`);
+  console.log(`🤖 AI Models (${MODELS.length} available):`);
+  MODELS.forEach((model, index) => {
+    console.log(`   ${index + 1}. ${model}`);
+  });
+  console.log('🔄 Rate Limit Protection: ENABLED');
+  console.log('📊 Model Status: /api/models/status');
   console.log('═══════════════════════════════════════════════\n');
 });
-
-
-
 
