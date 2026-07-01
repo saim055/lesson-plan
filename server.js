@@ -1,4 +1,3 @@
-import express from "express";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -6,6 +5,7 @@ import { createRequire } from "module";
 import cors from "cors";
 import multer from "multer";
 import mammoth from "mammoth";
+import express from "express";
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 import dotenv from "dotenv";
@@ -57,12 +57,12 @@ const MODEL_QUEUE = [
 ];
 
 // In-memory model cooldown timers (cooldown expires at this timestamp)
-const modelCooldowns: Record<string, number> = {};
+const modelCooldowns = {};
 const COOLDOWN_DURATION = 60 * 1000; // 60 seconds cooldown for rate limits
 
 // Lazy Groq initialization helper
-let groqClient: Groq | null = null;
-function getGroqClient(): Groq {
+let groqClient = null;
+function getGroqClient() {
   if (!groqClient) {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
@@ -74,7 +74,7 @@ function getGroqClient(): Groq {
 }
 
 // Multi-Model Fallback Execution Wrapper
-async function executeChatCompletionWithFallback(messages: any[], baseOptions: any = {}) {
+async function executeChatCompletionWithFallback(messages, baseOptions = {}) {
   const client = getGroqClient();
   const now = Date.now();
 
@@ -93,7 +93,7 @@ async function executeChatCompletionWithFallback(messages: any[], baseOptions: a
     availableModels = [...MODEL_QUEUE];
   }
 
-  let lastError: any = null;
+  let lastError = null;
 
   // Attempt the request with available models in order of preference
   for (const model of availableModels) {
@@ -110,7 +110,7 @@ async function executeChatCompletionWithFallback(messages: any[], baseOptions: a
         completion,
         usedModel: model
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error(`❌ Error with model ${model}:`, error.message || error);
       
       const statusCode = error.status || error.statusCode;
@@ -232,9 +232,9 @@ function ensureTemplateExists() {
 
 // ================= HELPER FUNCTIONS =================
 
-const safe = (v: any) => (v === undefined || v === null ? "" : String(v));
+const safe = (v) => (v === undefined || v === null ? "" : String(v));
 
-function getMonthlyValue(dateStr: string) {
+function getMonthlyValue(dateStr) {
   if (!dateStr) return 'Respect';
   const month = new Date(dateStr).getMonth();
   const values = [
@@ -244,7 +244,7 @@ function getMonthlyValue(dateStr: string) {
   return values[month] || 'Respect';
 }
 
-async function extractFileContent(filePath: string): Promise<string> {
+async function extractFileContent(filePath) {
   try {
     if (filePath.endsWith('.pdf')) {
       const dataBuffer = fs.readFileSync(filePath);
@@ -261,14 +261,14 @@ async function extractFileContent(filePath: string): Promise<string> {
 }
 
 // DOK Profiles
-const DOK_PROFILE: Record<string, string[]> = {
+const DOK_PROFILE = {
   introductory: ["DOK1", "DOK2", "DOK3"],
   intermediate: ["DOK2", "DOK3", "DOK4"],
   mastery: ["DOK3", "DOK4", "DOK4"]
 };
 
 // Standards alignment Mapping
-const STANDARDS_FRAMEWORK: Record<string, Record<string, string>> = {
+const STANDARDS_FRAMEWORK = {
   mathematics: {
     calculus: 'Common Core State Standards for Mathematics - High School',
     'pre-calculus': 'Common Core State Standards for Mathematics - High School',
@@ -302,7 +302,7 @@ const STANDARDS_FRAMEWORK: Record<string, Record<string, string>> = {
   }
 };
 
-function getStandardsFramework(subject: string, grade: string): string {
+function getStandardsFramework(subject, grade) {
   const subjectLower = subject.toLowerCase();
   
   if (subjectLower.includes('physical') || subjectLower.includes('pe')) {
@@ -568,7 +568,7 @@ Ensure all JSON string outputs are extremely detailed, rich, and inspection-read
 
 // ================= API GENERATION ENDPOINT =================
 
-app.post("/api/generate", upload.single("file"), async (req: any, res: any) => {
+app.post("/api/generate", upload.single("file"), async (req, res) => {
   console.log('\n========== NEW LESSON GENERATION REQUEST ==========');
   ensureTemplateExists();
 
@@ -648,7 +648,7 @@ Generate the complete lesson plan following the JSON format specified.`;
       aiResponse = result.completion.choices[0]?.message?.content;
       usedModelUsed = result.usedModel;
       console.log(`AI response received. Model used: ${usedModelUsed}`);
-    } catch (apiError: any) {
+    } catch (apiError) {
       console.error('AI API Error:', apiError);
       return res.status(500).json({
         error: 'AI generation failed after model fallback queue attempts.',
@@ -665,12 +665,12 @@ Generate the complete lesson plan following the JSON format specified.`;
     }
 
     // Parse AI response
-    let aiData: any;
+    let aiData;
     try {
       const cleanJson = aiResponse.replace(/```json\n?|\n?```/g, '').trim();
       aiData = JSON.parse(cleanJson);
       console.log('AI response parsed successfully');
-    } catch (parseError: any) {
+    } catch (parseError) {
       console.error('JSON Parse Error:', parseError);
       return res.status(500).json({
         error: 'Failed to parse AI response',
@@ -716,7 +716,7 @@ Generate the complete lesson plan following the JSON format specified.`;
 
       plenary: safe(
         Array.isArray(aiData.plenary) 
-          ? aiData.plenary.map((p: any, i: number) => `${i + 1}. (${p.dok || 'DOK'}) ${p.q}`).join('\n')
+          ? aiData.plenary.map((p, i) => `${i + 1}. (${p.dok || 'DOK'}) ${p.q}`).join('\n')
           : aiData.plenary || 'Multi-level review questions'
       ),
 
@@ -751,7 +751,7 @@ Generate the complete lesson plan following the JSON format specified.`;
     let templateContent;
     try {
       templateContent = fs.readFileSync(templatePath);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to load template:", err);
       return res.status(500).json({ error: "Template file missing", details: err.message });
     }
@@ -778,7 +778,7 @@ Generate the complete lesson plan following the JSON format specified.`;
 
     console.log('========== LESSON PLAN GENERATED AND SENT SUCCESSFULY ==========');
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Unexpected error in lesson generation endpoint:', error);
     res.status(500).json({
       error: 'Internal server error',
