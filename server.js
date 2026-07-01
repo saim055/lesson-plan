@@ -1,49 +1,45 @@
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import { createRequire } from "module";
-import cors from "cors";
-import multer from "multer";
-import mammoth from "mammoth";
-import express from "express";
-import PizZip from "pizzip";
-import Docxtemplater from "docxtemplater";
-import dotenv from "dotenv";
-import Groq from "groq-sdk";
-import { createServer as createViteServer } from "vite";
-
-const require = createRequire(import.meta.url);
+// ================= IMPORTS =================
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const cors = require("cors");
+const multer = require("multer");
 const pdf = require("pdf-parse");
+const mammoth = require("mammoth");
+const PizZip = require("pizzip");
+const Docxtemplater = require("docxtemplater");
+require("dotenv").config();
 
-dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// ================= ENV VAR CHECK =================
+// Environment variable debugging
 console.log('=== STARTUP DEBUG ===');
 console.log('Environment Variables:');
 console.log('GROQ_API_KEY present:', !!process.env.GROQ_API_KEY);
 console.log('GROQ_API_KEY length:', process.env.GROQ_API_KEY?.length || 0);
-console.log('PORT:', process.env.PORT || 'default (3000)');
+console.log('PORT:', process.env.PORT || 'default');
 console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
-console.log('Working directory:', process.cwd());
+console.log('Working directory:', __dirname);
 console.log('=== END STARTUP DEBUG ===');
 
 // ================= APP SETUP =================
 const app = express();
-const PORT = parseInt(process.env.PORT || "3000", 10);
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 
 // Ensure uploads directory exists
-const uploadsDir = path.join(process.cwd(), 'uploads');
+const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
 const upload = multer({ dest: uploadsDir });
+
+// ================= AI CLIENT =================
+const Groq = require("groq-sdk");
+const client = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+});
 
 // ================= MULTI-MODEL FALLBACK SYSTEM (Rate Limit Solution) =================
 const MODEL_QUEUE = [
@@ -60,22 +56,8 @@ const MODEL_QUEUE = [
 const modelCooldowns = {};
 const COOLDOWN_DURATION = 60 * 1000; // 60 seconds cooldown for rate limits
 
-// Lazy Groq initialization helper
-let groqClient = null;
-function getGroqClient() {
-  if (!groqClient) {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      throw new Error("GROQ_API_KEY environment variable is required. Please add it to your secrets or environment configuration.");
-    }
-    groqClient = new Groq({ apiKey });
-  }
-  return groqClient;
-}
-
-// Multi-Model Fallback Execution Wrapper
+// Fallback execution function
 async function executeChatCompletionWithFallback(messages, baseOptions = {}) {
-  const client = getGroqClient();
   const now = Date.now();
 
   // Find models that are not on cooldown
@@ -139,104 +121,14 @@ async function executeChatCompletionWithFallback(messages, baseOptions = {}) {
   throw new Error(`All models in the Multi-Model Fallback Queue failed. Last error: ${lastError?.message || lastError}`);
 }
 
-// ================= AUTO-HEALING DOCX TEMPLATE CREATOR =================
-const templatePath = path.join(process.cwd(), 'LESSON PLAN TEMPLATE.docx');
-
-function ensureTemplateExists() {
-  if (!fs.existsSync(templatePath)) {
-    console.log("📝 LESSON PLAN TEMPLATE.docx not found. Creating a default high-quality template programmatically...");
-    try {
-      const zip = new PizZip();
-      
-      // 1. [Content_Types].xml
-      zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>`);
-
-      // 2. _rels/.rels
-      zip.file("_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`);
-
-      // 3. word/document.xml
-      const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:body>
-    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="36"/></w:rPr><w:t>LESSON PLAN: {topic}</w:t></w:r></w:p>
-    <w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>Subject: {subject} | Grade: {grade} | Date: {date} | Semester: {semester} | Period: {period}</w:t></w:r></w:p>
-    <w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>Standard Framework: {standardText}</w:t></w:r></w:p>
-    <w:p><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>Value of the Month: {value}</w:t></w:r></w:p>
-    
-    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>SMART Learning Objectives</w:t></w:r></w:p>
-    <w:p><w:r><w:t>1. {objective1}</w:t></w:r></w:p>
-    <w:p><w:r><w:t>2. {objective2}</w:t></w:r></w:p>
-    <w:p><w:r><w:t>3. {objective3}</w:t></w:r></w:p>
-    
-    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>Differentiated Learning Outcomes</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>All Students: </w:t></w:r><w:r><w:t>{outcomeAll}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Most Students: </w:t></w:r><w:r><w:t>{outcomeMost}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Some Students: </w:t></w:r><w:r><w:t>{outcomeSome}</w:t></w:r></w:p>
-    
-    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>Vocabulary &amp; Resources</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Vocabulary: </w:t></w:r><w:r><w:t>{vocabulary}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Resources: </w:t></w:r><w:r><w:t>{resources}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Transferable Skills: </w:t></w:r><w:r><w:t>{skills}</w:t></w:r></w:p>
-    
-    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>Starter Activity (Attention Grabbing)</w:t></w:r></w:p>
-    <w:p><w:r><w:t>{starter}</w:t></w:r></w:p>
-    
-    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>Teaching &amp; Learning Component (Socratic &amp; Modelled)</w:t></w:r></w:p>
-    <w:p><w:r><w:t>{teaching}</w:t></w:r></w:p>
-    
-    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>Cooperative Learning Tasks</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Support Group (DOK 1-2): </w:t></w:r><w:r><w:t>{coopSupport}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Core/Average Group (DOK 2-3): </w:t></w:r><w:r><w:t>{coopAverage}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Challenge/Upper Group (DOK 3-4): </w:t></w:r><w:r><w:t>{coopUpper}</w:t></w:r></w:p>
-    
-    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>Independent Practice Tasks</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Support: </w:t></w:r><w:r><w:t>{indepSupport}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Average: </w:t></w:r><w:r><w:t>{indepAverage}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Upper: </w:t></w:r><w:r><w:t>{indepUpper}</w:t></w:r></w:p>
-    
-    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>Plenary (Multi-Level Assessment Questions)</w:t></w:r></w:p>
-    <w:p><w:r><w:t>{plenary}</w:t></w:r></w:p>
-    
-    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>Cross-Curricular &amp; Real World Connections</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>My Identity: </w:t></w:r><w:r><w:t>{myIdentity}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Moral Education: </w:t></w:r><w:r><w:t>{moralEducation}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>STEAM Connections: </w:t></w:r><w:r><w:t>{steam}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Subject Connections: </w:t></w:r><w:r><w:t>{linksToSubjects}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Sustainability/Environment: </w:t></w:r><w:r><w:t>{environment}</w:t></w:r></w:p>
-    <w:p><w:r><w:b/><w:t>Real-World Applications (UAE Context): </w:t></w:r><w:r><w:t>{realWorld}</w:t></w:r></w:p>
-    
-    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>Advanced Learning Needs (ALN) Objectives (Gifted &amp; Talented)</w:t></w:r></w:p>
-    <w:p><w:r><w:t>{alnObjectives}</w:t></w:r></w:p>
-  </w:body>
-</w:document>`;
-      zip.file("word/document.xml", docXml);
-      
-      const buffer = zip.generate({ type: 'nodebuffer' });
-      fs.writeFileSync(templatePath, buffer);
-      console.log("✅ Default LESSON PLAN TEMPLATE.docx created successfully.");
-    } catch (error) {
-      console.error("❌ Failed to create default LESSON PLAN TEMPLATE.docx:", error);
-    }
-  } else {
-    console.log("📝 Word document template exists.");
-  }
-}
-
 // ================= HELPER FUNCTIONS =================
 
+// Safe string conversion
 const safe = (v) => (v === undefined || v === null ? "" : String(v));
 
-function getMonthlyValue(dateStr) {
-  if (!dateStr) return 'Respect';
-  const month = new Date(dateStr).getMonth();
+// Monthly values
+function getMonthlyValue(date) {
+  const month = new Date(date).getMonth();
   const values = [
     'Integrity', 'Respect', 'Responsibility', 'Courage', 'Compassion', 'Perseverance',
     'Honesty', 'Fairness', 'Generosity', 'Humility', 'Tolerance', 'Peace'
@@ -244,6 +136,7 @@ function getMonthlyValue(dateStr) {
   return values[month] || 'Respect';
 }
 
+// Extract file content
 async function extractFileContent(filePath) {
   try {
     if (filePath.endsWith('.pdf')) {
@@ -267,7 +160,7 @@ const DOK_PROFILE = {
   mastery: ["DOK3", "DOK4", "DOK4"]
 };
 
-// Standards alignment Mapping
+// ================= STANDARDS MAPPING =================
 const STANDARDS_FRAMEWORK = {
   mathematics: {
     calculus: 'Common Core State Standards for Mathematics - High School',
@@ -297,18 +190,18 @@ const STANDARDS_FRAMEWORK = {
   'physical education': {
     default: 'UAE Ministry of Education Physical and Health Education Curriculum'
   },
-  default: {
-    default: 'California Common Core State Standards'
-  }
+  default: 'California Common Core State Standards'
 };
 
 function getStandardsFramework(subject, grade) {
   const subjectLower = subject.toLowerCase();
   
+  // Physical Education
   if (subjectLower.includes('physical') || subjectLower.includes('pe')) {
     return STANDARDS_FRAMEWORK['physical education'].default;
   }
   
+  // Mathematics
   if (subjectLower.includes('math') || subjectLower.includes('calculus') || 
       subjectLower.includes('algebra') || subjectLower.includes('geometry')) {
     if (subjectLower.includes('pre-calculus')) return STANDARDS_FRAMEWORK.mathematics['pre-calculus'];
@@ -316,9 +209,10 @@ function getStandardsFramework(subject, grade) {
     return STANDARDS_FRAMEWORK.mathematics.default;
   }
   
+  // Science
   if (subjectLower.includes('science') || subjectLower.includes('physics') || 
       subjectLower.includes('chemistry') || subjectLower.includes('biology')) {
-    const gradeNum = parseInt(grade, 10);
+    const gradeNum = parseInt(grade);
     if (subjectLower.includes('physics')) return STANDARDS_FRAMEWORK.science.physics;
     if (subjectLower.includes('chemistry')) return STANDARDS_FRAMEWORK.science.chemistry;
     if (subjectLower.includes('biology')) return STANDARDS_FRAMEWORK.science.biology;
@@ -328,18 +222,23 @@ function getStandardsFramework(subject, grade) {
     return STANDARDS_FRAMEWORK.science.default;
   }
   
+  // English
   if (subjectLower.includes('english') || subjectLower.includes('language arts') || 
       subjectLower.includes('reading') || subjectLower.includes('writing')) {
     return STANDARDS_FRAMEWORK.english.default;
   }
   
+  // Computer Science
   if (subjectLower.includes('computer') || subjectLower.includes('coding') || 
       subjectLower.includes('programming')) {
     return STANDARDS_FRAMEWORK['computer science'].default;
   }
   
-  return STANDARDS_FRAMEWORK.default.default;
+  // Default
+  return STANDARDS_FRAMEWORK.default;
 }
+
+// ================= ENHANCED EXPERT PROMPT SYSTEM =================
 
 const EXPERT_SYSTEM_PROMPT = `You are an expert curriculum designer and experienced subject specialist.
 
@@ -473,7 +372,215 @@ RESPONSE FORMAT
 
 Return a valid JSON object with the specified structure. Ensure all strings are long and detailed.
 
+Examples:
+"I'm going to place this book on the table. The book pushes down on the table with its weight. Question: Does the table push back? If yes, why doesn't the book fall through? Turn to your partner and discuss for 30 seconds."
+
+"Watch this slow-motion video of a car crash test. What forces do you observe? What happens to the car's momentum? Write down 2 observations."
+✗ "Today we will learn about Newton's Third Law. It states that for every action..." (Explaining, not engaging)
+
 Do NOT explain concepts in the starter. Ask questions that reveal thinking.
+
+--------------------------------------------------
+6. TEACHING & LEARNING (STUDENT-CENTERED & DETAILED)
+--------------------------------------------------
+
+The teaching section must be STUDENT-CENTERED, not teacher-centered.
+
+STRUCTURE:
+1. Address starter responses (2-3 min)
+   - "Many of you noticed that... Let's explore why..."
+   
+2. Guided discovery (8-12 min)
+   - Use questioning to guide students to discover concepts
+   - Include think-pair-share moments
+   - Use concrete examples before abstract
+   - Build from simple → complex
+   
+3. Co-construct understanding (5-7 min)
+   - Students help build definitions, formulas, or models
+   - Use visual representations (diagrams, graphs, etc.)
+   - Check for understanding with quick formative checks
+   
+4. Practice with feedback (5-8 min)
+   - Worked example with student input
+   - Students try similar problem in pairs
+   - Immediate feedback and error correction
+
+TEACHING STRATEGIES TO INCLUDE:
+- Socratic questioning: "What do you notice? Why might that be?"
+- Think-Aloud: Model problem-solving verbally
+- Collaborative learning: "Discuss with your partner..."
+- Formative checks: Mini whiteboards, thumbs up/down, exit tickets
+- Multiple representations: Verbal, visual, symbolic, kinesthetic
+
+Example (GOOD):
+"Let's revisit your starter predictions. [Student name] said the table doesn't push back. Let's test this. I'll place this force sensor under the book. What do you observe on the display? [Students respond: It shows a force!] Exactly! The table DOES push back.
+
+Now, turn to your partner: If the table pushes up with the same force the book pushes down, why doesn't the book fly upward? [2 min discussion]
+
+[Listen to responses] Great thinking! The key is that these forces act on DIFFERENT objects. Let's draw this... [co-construct force diagram with students]
+
+The book experiences TWO forces: gravity (down) and the normal force from the table (up). These are balanced. But Newton's Third Law is about PAIRS of forces between TWO objects..."
+
+Example (BAD):
+"Newton's Third Law states that for every action, there is an equal and opposite reaction. This means forces come in pairs. For example, when you push on a wall, the wall pushes back on you with the same force. The forces are equal in magnitude but opposite in direction."
+
+--------------------------------------------------
+7. COOPERATIVE TASKS (DETAILED & DIFFERENTIATED)
+--------------------------------------------------
+
+You must design THREE cooperative tasks with CLEAR, SPECIFIC instructions.
+
+A. SUPPORT GROUP (Lowest DOK)
+- State EXACTLY what students do step-by-step
+- Provide scaffolds: sentence stems, word banks, worked examples
+- Specify the deliverable (diagram, calculation, explanation)
+- Include teacher check-in points
+
+Example:
+"Support Group - Identifying Force Pairs (DOK 1-2)
+
+Task: Working in pairs, identify action-reaction force pairs in everyday scenarios.
+
+Materials: Force Pairs Worksheet, scenario cards
+
+Steps:
+1. Read each scenario card (e.g., 'A person sitting on a chair')
+2. Use the sentence stem: 'Object A pushes/pulls on Object B, so Object B pushes/pulls back on Object A'
+3. Draw arrows showing both forces in the pair
+4. Label each force with magnitude and direction
+
+Deliverable: Complete 5 scenarios with correctly labeled force pairs
+
+Teacher checkpoint: After scenario 2, check for correct labeling before continuing"
+
+B. CORE GROUP (Middle DOK)
+- Requires reasoning and application
+- Students must explain their thinking
+- Include a problem-solving component
+
+Example:
+"Core Group - Applying Newton's Third Law (DOK 2-3)
+
+Task: Calculate and analyze force pairs in collision scenarios.
+
+Scenario: A 1200 kg car traveling at 20 m/s collides with a stationary 800 kg car.
+
+Steps:
+1. Calculate the momentum before collision
+2. Using conservation of momentum, determine the velocities after collision
+3. Calculate the force each car exerts on the other during the 0.5 s collision
+4. Explain: Are the forces equal? Why or why not?
+5. Predict: What happens if the second car is moving toward the first car?
+
+Deliverable: Complete calculations with written explanations for steps 4-5
+
+Success criteria: Correct calculations (70%), clear explanation using Newton's Third Law"
+
+C. CHALLENGE GROUP (Highest DOK)
+- Requires analysis, evaluation, or design
+- Open-ended with multiple solution paths
+- Students must justify their decisions
+
+Example:
+"Challenge Group - Engineering Application (DOK 3-4)
+
+Task: Design a safety system that minimizes injury during a collision.
+
+Challenge: You are an automotive engineer. Design a car safety feature that reduces the impact force on passengers during a collision.
+
+Requirements:
+1. Research: How do airbags, crumple zones, and seatbelts use Newton's Third Law?
+2. Design: Sketch and explain your improved safety system
+3. Analyze: Calculate force reduction using F = Δp/Δt (show how increasing time decreases force)
+4. Evaluate: What are the trade-offs of your design? (cost, weight, effectiveness)
+
+Deliverable: Design sketch, force calculations, written justification (300 words)
+
+Extension: Present your design to the class and defend your choices based on physics principles"
+
+--------------------------------------------------
+8. INDEPENDENT TASKS (DETAILED & DOK-ALIGNED)
+--------------------------------------------------
+
+You must design THREE independent tasks following the same differentiation approach.
+
+Each task must:
+- Be clearly different from cooperative tasks (not repetitive)
+- Specify the deliverable 
+- Provide assessment guidance
+
+SUPPORT Level Example:
+"Independent Practice - Force Pairs in Daily Life (DOK 1-2)
+
+Task: Complete the Force Pairs Identification Sheet
+
+Instructions:
+1. For each of 8 scenarios, identify the action-reaction pair
+2. Draw and label forces with arrows
+3. Write one sentence explaining why the forces are equal
+
+Scenarios include: jumping, swimming, rocket launch, walking
+
+Success Criteria:
+- All 8 scenarios completed
+- Forces correctly identified (object A on B, object B on A)
+- Arrows show correct direction
+- Explanation uses key vocabulary (action, reaction, equal, opposite)
+
+Time: 15 minutes
+Assessment: Self-check with answer key, then teacher review"
+
+CORE Level Example:
+"Independent Practice - Collision Analysis (DOK 2-3)
+
+Task: Solve 4 collision problems involving momentum and force
+
+Problems:
+1. Head-on collision: Calculate forces during impact
+2. Rear-end collision: Determine acceleration of both vehicles
+3. Elastic collision: Apply conservation of momentum and energy
+4. Real-world application: Calculate forces in a sports scenario (choose: football tackle, hockey check, or billiards)
+
+For each problem:
+- Show all work and formulas
+- Explain: Why are the forces equal even if the masses differ?
+- Predict: How would changing one variable affect the outcome?
+
+CORE Level Example (continued):
+Success Criteria:
+- All calculations accurate
+- Explanations demonstrate understanding of Newton's Third Law
+- Predictions show conceptual application
+
+Time: 20 minutes
+Assessment: Teacher rubric focusing on accuracy (50%), explanation quality (30%), prediction depth (20%)"
+
+CHALLENGE Level Example:
+"Independent Research & Analysis (DOK 3-4)
+
+Task: Investigate a real-world application of Newton's Third Law
+
+Choose one:
+A) Rocket propulsion in space exploration
+B) Recoil in firearms
+C) Swimming biomechanics
+D) Jet engine thrust
+
+Requirements:
+1. Research the physics behind your chosen application
+2. Create a detailed force diagram showing all action-reaction pairs
+3. Perform calculations demonstrating momentum/force relationships
+4. Analyze: Why is this application effective? What are limitations?
+5. Design: Propose an improvement based on physics principles
+
+Deliverable: 
+- 2-page report with diagrams and calculations
+- Must cite 2 reputable sources
+- Include a "conclusion" section evaluating the effectiveness
+
+Time: 25 minutes (or homework extension)
+Assessment: Holistic rubric: Research depth (20%), Diagram accuracy (20%), Calculations (20%), Analysis quality (20%), Design creativity (20%)"
 
 --------------------------------------------------
 9. PLENARY (MULTI-LEVEL ASSESSMENT)
@@ -483,6 +590,12 @@ Create 4-5 questions spanning DOK levels to assess understanding.
 
 Format: [DOK Level] Question
 
+Examples:
+✓ [DOK 1] "Define Newton's Third Law in your own words"
+✓ [DOK 2] "Calculate the reaction force when a 50 kg person jumps with 400 N force"
+✓ [DOK 3] "Explain why a rocket can accelerate in space even though there's nothing to push against"
+✓ [DOK 4] "Design an experiment to prove Newton's Third Law using household items. Justify your method"
+
 --------------------------------------------------
 10. VOCABULARY, RESOURCES & SKILLS
 --------------------------------------------------
@@ -490,6 +603,16 @@ Format: [DOK Level] Question
 VOCABULARY: List 5-8 key terms with brief definitions
 
 RESOURCES: Provide SPECIFIC, USABLE resources with links
+- Include: textbook pages, online simulations, videos, lab equipment
+- Format: "Resource Name - URL or description"
+
+Example:
+✓ "PhET Forces and Motion Simulation - https://phet.colorado.edu/en/simulation/forces-and-motion-basics"
+✓ "Khan Academy: Newton's Third Law - https://www.khanacademy.org/science/physics/forces-newtons-laws/newtons-laws-of-motion/v/newton-s-third-law-of-motion"
+
+For Islamic Studies, include resources like UAE MOE Portal: https://www.moe.gov.ae/, Quran.com: https://quran.com/, IslamicFinder: https://www.islamicfinder.org/quran/
+
+For Physical Education, include SHAPE America: https://www.shapeamerica.org/, PE videos: https://www.youtube.com/c/PEwithCoach, equipment like balls, cones.
 
 SKILLS: List 3-5 transferable skills developed in this lesson
 
@@ -498,8 +621,35 @@ SKILLS: List 3-5 transferable skills developed in this lesson
 --------------------------------------------------
 
 MY IDENTITY (MANDATORY):
-Culture, Values, or Citizenship. Select the domain that best represents the topic's main learning intent.
-For Islamic Studies, prioritize Values (e.g., Compassion) or Citizenship (Belonging for national identity in UAE).
+Culture – Use when the topic involves:
+
+Language, literature, and communication
+
+Historical events, traditions, and cultural practices
+
+UAE heritage, archaeology, and traditional knowledge
+Elements: Arabic Language, History, Heritage
+
+Values – Use when the topic involves:
+
+Ethical decision-making and moral reasoning
+
+Interpersonal skills, empathy, and understanding others
+
+Global understanding and international cooperation
+Elements: Respect, Compassion, Global Understanding
+
+Citizenship – Use when the topic involves:
+
+Environmental issues, sustainability, and conservation
+
+Community participation and civic responsibility
+
+National identity and social responsibility
+Elements: Belonging, Volunteering, Conservation
+
+Select the domain that best represents the topic’s main learning intent, even if secondary aspects overlap with other domains.
+For Islamic Studies, prioritize Values (e.g., Compassion for moral lessons) or Citizenship (Belonging for national identity in UAE).
 
 --------------------------------------------------
 12. REAL-WORLD CONNECTIONS
@@ -564,24 +714,47 @@ Return a valid JSON object with this EXACT structure:
   "alnObjective": "Advanced objective for gifted students (if applicable)"
 }
 
-Ensure all JSON string outputs are extremely detailed, rich, and inspection-ready.`;
+Remember:
+- SMART objectives are mandatory
+- Standards must be EXACT and SPECIFIC
+- Tasks must be DETAILED with clear instructions
+- Starter must be ATTENTION-GRABBING
+- Teaching must be STUDENT-CENTERED
+- All sections must be inspection-ready
 
-// ================= API GENERATION ENDPOINT =================
+Generate the lesson plan now.`;
+
+// ================= STATIC FILES =================
+
+// Serve frontend
+app.get('/', (req, res) => {
+  const htmlPath = path.join(__dirname, 'enhanced-lesson-planner.html');
+  if (fs.existsSync(htmlPath)) {
+    res.sendFile(htmlPath);
+  } else {
+    res.status(404).json({ 
+      error: 'Frontend not found', 
+      message: 'enhanced-lesson-planner.html not found' 
+    });
+  }
+});
+
+// ================= API ROUTE =================
 
 app.post("/api/generate", upload.single("file"), async (req, res) => {
   console.log('\n========== NEW LESSON GENERATION REQUEST ==========');
-  ensureTemplateExists();
-
+  
   try {
     const {
       subject, grade, topic, level, period,
-      date, semester, lessonType, giftedTalented
+      date, semester, lessonType, giftedTalented, standardType
     } = req.body;
 
     console.log('Request parameters:', {
       subject, grade, topic, level, lessonType, giftedTalented
     });
 
+    // Validate required fields
     if (!subject || !grade || !topic || !level) {
       console.error('Missing required fields');
       return res.status(400).json({
@@ -590,19 +763,22 @@ app.post("/api/generate", upload.single("file"), async (req, res) => {
       });
     }
 
+    // Determine standards framework
     const standardsFramework = getStandardsFramework(subject, grade);
     console.log('Standards framework selected:', standardsFramework);
 
+    // Get DOK distribution
     const dokLevels = DOK_PROFILE[level.toLowerCase()] || DOK_PROFILE.introductory;
     console.log('DOK levels for', level, ':', dokLevels);
 
-    // Extract file context
+    // Extract syllabus content if file provided
     let syllabusContent = "";
     if (req.file) {
       console.log('Processing uploaded file:', req.file.originalname);
       syllabusContent = await extractFileContent(req.file.path);
       console.log('Syllabus content extracted:', syllabusContent.substring(0, 200) + '...');
       
+      // Clean up uploaded file
       try {
         fs.unlinkSync(req.file.path);
       } catch (err) {
@@ -610,7 +786,7 @@ app.post("/api/generate", upload.single("file"), async (req, res) => {
       }
     }
 
-    // Build user prompt
+    // Build AI prompt
     const userPrompt = `Generate a comprehensive lesson plan with the following specifications:
 
 LESSON DETAILS:
@@ -621,43 +797,60 @@ LESSON DETAILS:
 - Standards Framework: ${standardsFramework}
 - DOK Distribution: ${dokLevels.join(', ')}
 ${syllabusContent ? `\nSYLLABUS CONTEXT:\n${syllabusContent}\n` : ''}
-${giftedTalented === 'yes' ? '\nINCLUDE: Advanced Learning Needs (ALN) objective for gifted and talented students in the alnObjective property\n' : ''}
+${giftedTalented === 'yes' ? '\nINCLUDE: Advanced Learning Needs (ALN) objective for gifted and talented students\n' : ''}
 
 CRITICAL REQUIREMENTS FOR DEPTH & DIFFERENTIATION:
-1. TEACHING COMPONENT: This must be a detailed narrative (300+ words). Describe the dialogue, specific questions you will ask, and how you will handle student misconceptions.
-2. COOPERATIVE TASKS: Create 3 CLEARLY DIFFERENT tasks. Support task (DOK 1-2), Average task (DOK 2-3), and Challenge task (DOK 3-4).
-3. INDEPENDENT TASKS: These must be distinct from cooperative tasks.
+
+1. TEACHING COMPONENT: This must be a detailed narrative (300+ words). 
+   - DO NOT just list steps. 
+   - Describe the dialogue, the specific questions you will ask, and how you will handle student misconceptions.
+   - Explicitly state how you will model the concept.
+
+2. COOPERATIVE TASKS: Create 3 CLEARLY DIFFERENT tasks.
+   - The Support task must be foundational (DOK 1-2).
+   - The Average task must be application-based (DOK 2-3).
+   - The Challenge task must be analytical or creative (DOK 3-4).
+   - They MUST NOT be the same task with different difficulty; they should be different activities.
+
+3. INDEPENDENT TASKS: These must be distinct from the cooperative tasks. 
+   - Ensure they provide a path for students to demonstrate individual mastery at their specific level.
+
 4. STANDARDS: Provide the EXACT standard code and complete description from ${standardsFramework}.
 
 Generate the complete lesson plan following the JSON format specified.`;
 
     console.log('\n=== CALLING AI API ===');
-    
+    console.log('Prompt length:', userPrompt.length, 'characters');
+
+    // ========== USE MULTI-MODEL FALLBACK ==========
     let aiResponse;
-    let usedModelUsed = "";
+    let usedModel = "unknown";
     try {
-      const result = await executeChatCompletionWithFallback([
-        { role: "system", content: EXPERT_SYSTEM_PROMPT },
-        { role: "user", content: userPrompt }
-      ], {
-        temperature: 0.7,
-        max_tokens: 8000,
-        response_format: { type: "json_object" }
-      });
+      const result = await executeChatCompletionWithFallback(
+        [
+          { role: "system", content: EXPERT_SYSTEM_PROMPT },
+          { role: "user", content: userPrompt }
+        ],
+        {
+          temperature: 0.7,
+          max_tokens: 8000,
+          response_format: { type: "json_object" }
+        }
+      );
 
       aiResponse = result.completion.choices[0]?.message?.content;
-      usedModelUsed = result.usedModel;
-      console.log(`AI response received. Model used: ${usedModelUsed}`);
-    } catch (apiError) {
-      console.error('AI API Error:', apiError);
+      usedModel = result.usedModel;
+      console.log(`✅ AI response received using model: ${usedModel}`);
+    } catch (fallbackError) {
+      console.error('Fallback error:', fallbackError);
       return res.status(500).json({
-        error: 'AI generation failed after model fallback queue attempts.',
-        details: apiError.message
+        error: 'AI generation failed after trying all models.',
+        details: fallbackError.message
       });
     }
 
     if (!aiResponse) {
-      console.error('No AI response content returned');
+      console.error('No AI response received');
       return res.status(500).json({
         error: 'No response from AI',
         details: 'The AI did not generate any content'
@@ -667,11 +860,15 @@ Generate the complete lesson plan following the JSON format specified.`;
     // Parse AI response
     let aiData;
     try {
+      // Clean potential markdown blocks from AI response
       const cleanJson = aiResponse.replace(/```json\n?|\n?```/g, '').trim();
       aiData = JSON.parse(cleanJson);
       console.log('AI response parsed successfully');
+      console.log('Generated objectives:', aiData.objectives?.length || 0);
+      console.log('Standard text:', aiData.standardText?.substring(0, 100) || 'MISSING');
     } catch (parseError) {
       console.error('JSON Parse Error:', parseError);
+      console.error('AI Response:', aiResponse.substring(0, 500));
       return res.status(500).json({
         error: 'Failed to parse AI response',
         details: parseError.message,
@@ -679,9 +876,10 @@ Generate the complete lesson plan following the JSON format specified.`;
       });
     }
 
-    // Format fields
+    // Prepare template data
     const templateData = {
-      date: safe(date ? new Date(date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('en-US')),
+      // Basic info
+      date: safe(new Date(date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })),
       semester: safe(semester || '1'),
       grade: safe(grade),
       subject: safe(subject),
@@ -689,100 +887,158 @@ Generate the complete lesson plan following the JSON format specified.`;
       period: safe(period || '1'),
       value: safe(getMonthlyValue(date)),
 
+      // Standards - Now uses AI-generated exact standard
       standardText: safe(aiData.standardText || `${standardsFramework} - Standard for Grade ${grade} ${subject}: ${topic}`),
 
+      // SMART Objectives
       objective1: safe(aiData.objectives?.[0]?.text || `Students will demonstrate understanding of ${topic} (${dokLevels[0]})`),
       objective2: safe(aiData.objectives?.[1]?.text || `Students will apply concepts from ${topic} (${dokLevels[1]})`),
       objective3: safe(aiData.objectives?.[2]?.text || `Students will analyze applications of ${topic} (${dokLevels[2]})`),
 
+      // Outcomes
       outcomeAll: safe(aiData.outcomes?.all?.text || `All students will identify key concepts of ${topic}`),
       outcomeMost: safe(aiData.outcomes?.most?.text || `Most students will apply ${topic} to solve problems`),
       outcomeSome: safe(aiData.outcomes?.some?.text || `Some students will evaluate and justify solutions using ${topic}`),
 
+      // Content
       vocabulary: safe(Array.isArray(aiData.vocabulary) ? aiData.vocabulary.join('\n') : aiData.vocabulary || 'Key terms'),
-      resources: safe(Array.isArray(aiData.resources) ? aiData.resources.join('\n') : aiData.resources || 'Educational resources and materials'),
+      resources: safe(
+        Array.isArray(aiData.resources) 
+          ? aiData.resources.join('\n') 
+          : aiData.resources || 'Educational resources and materials'
+      ),
       skills: safe(aiData.skills || 'Critical thinking, problem-solving, collaboration'),
 
-      starter: safe(aiData.starter || 'Starter activity'),
-      teaching: safe(aiData.teaching || 'Detailed teaching component'),
+      // Activities - Enhanced
+      starter: safe(aiData.starter || 'Attention-grabbing inquiry-based starter to activate prior knowledge and reveal misconceptions'),
+      teaching: safe(aiData.teaching || 'Detailed student-centered teaching component with guided discovery, Socratic questioning, and formative checks'),
 
-      coopUpper: safe(aiData.cooperative?.upper || 'Challenge analysis task'),
-      coopAverage: safe(aiData.cooperative?.average || 'Core application task'),
-      coopSupport: safe(aiData.cooperative?.support || 'Support foundational task'),
+      // Cooperative tasks - Detailed and differentiated
+      coopUpper: safe(aiData.cooperative?.upper || 'Challenge: Advanced analysis task requiring justification, evaluation, and design thinking'),
+      coopAverage: safe(aiData.cooperative?.average || 'Core: Structured application task requiring reasoning and explanation'),
+      coopSupport: safe(aiData.cooperative?.support || 'Support: Scaffolded task with graphic organizers, sentence stems, and peer support'),
 
-      indepUpper: safe(aiData.independent?.upper || 'Challenge research task'),
-      indepAverage: safe(aiData.independent?.average || 'Core application task'),
-      indepSupport: safe(aiData.independent?.support || 'Support guided practice'),
+      // Independent tasks - Detailed and differentiated
+      indepUpper: safe(aiData.independent?.upper || 'Challenge: Research and evaluation task with higher-order thinking and real-world application'),
+      indepAverage: safe(aiData.independent?.average || 'Core: Application task with clear steps, success criteria, and self-assessment'),
+      indepSupport: safe(aiData.independent?.support || 'Support: Guided practice with templates, worked examples, and immediate feedback'),
 
+      // Plenary
       plenary: safe(
         Array.isArray(aiData.plenary) 
-          ? aiData.plenary.map((p, i) => `${i + 1}. (${p.dok || 'DOK'}) ${p.q}`).join('\n')
-          : aiData.plenary || 'Multi-level review questions'
+          ? aiData.plenary.map((p, i) => `${i + 1}. (${p.dok}) ${p.q}`).join('\n')
+          : aiData.plenary || 'Multi-level review questions assessing understanding'
       ),
 
+      // Cross-curricular
       myIdentity: safe(
         aiData.identity && aiData.identity.domain && aiData.identity.element && aiData.identity.description
           ? `Domain: ${aiData.identity.domain} - Element: ${aiData.identity.element}\n\n${aiData.identity.description}`
-          : `Domain and Element selected based on topic relevance.`
+          : `Domain and Element must be selected by AI based on topic relevance.`
       ),
+      identityDomain: safe(aiData.identity?.domain || 'ERROR'),
+      identityElement: safe(aiData.identity?.element || 'ERROR'),
+      identityDescription: safe(aiData.identity?.description || 'My Identity description missing.'),
       
       moralEducation: safe(aiData.moralEducation || 'Connection to Islamic values and moral education'),
-      steam: safe(aiData.steam || 'STEAM connections'),
+      steam: safe(aiData.steam || 'Science, Technology, Engineering, Arts, Mathematics connections'),
       linksToSubjects: safe(aiData.linksToSubjects || 'Cross-curricular connections'),
       environment: safe(aiData.environment || 'UAE sustainability and environmental connections'),
-      realWorld: safe(aiData.realWorld || 'Real-world applications in UAE context'),
 
+      // Real world
+      realWorld: safe(aiData.realWorld || 'Real-world applications in UAE context with industry and career connections'),
+
+      // ALN for Gifted Students
       alnObjectives: giftedTalented === 'yes' 
         ? safe(aiData.alnObjective || `Gifted students will synthesize ${topic} concepts through advanced research, designing innovative solutions (DOK 4).`)
         : ''
     };
 
-    // If client requested JSON representation (e.g. for rich UI preview)
-    if (req.headers.accept === 'application/json' || req.query.format === 'json') {
-      return res.json({
-        success: true,
-        usedModel: usedModelUsed,
-        templateData,
-        rawAiData: aiData
+    console.log('Template data prepared');
+    console.log('Standard Text:', templateData.standardText.substring(0, 100) + '...');
+    console.log('Objective 1:', templateData.objective1.substring(0, 100) + '...');
+    console.log('My Identity:', templateData.identityDomain + ' - ' + templateData.identityElement);
+    console.log('ALN Objectives:', templateData.alnObjectives ? 'POPULATED' : 'EMPTY');
+
+    // Load template
+    const templatePath = path.join(__dirname, 'LESSON PLAN TEMPLATE.docx');
+    
+    console.log('Looking for template at:', templatePath);
+    console.log('Template exists:', fs.existsSync(templatePath));
+    
+    if (!fs.existsSync(templatePath)) {
+      console.error('Template file not found');
+      return res.status(500).json({ 
+        error: 'Template file not found', 
+        details: `Template not found at: ${templatePath}`,
+        workingDirectory: __dirname,
+        filesInDir: fs.readdirSync(__dirname)
       });
     }
 
-    // Build DOCX document
-    let templateContent;
+    console.log('Loading template from:', templatePath);
+    
+    let templateContent, zip, doc;
     try {
       templateContent = fs.readFileSync(templatePath);
-    } catch (err) {
-      console.error("Failed to load template:", err);
-      return res.status(500).json({ error: "Template file missing", details: err.message });
+      zip = new PizZip(templateContent);
+      doc = new Docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+      });
+    } catch (templateError) {
+      console.error('Template loading error:', templateError);
+      return res.status(500).json({
+        error: 'Failed to load template',
+        details: templateError.message
+      });
     }
 
-    const zip = new PizZip(templateContent);
-    const doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks: true,
-    });
+    // Render template
+    console.log('Rendering template with AI data...');
+    try {
+      doc.setData(templateData);
+      doc.render();
+    } catch (renderError) {
+      console.error('Template render error:', renderError);
+      return res.status(500).json({ 
+        error: 'Failed to render template', 
+        details: renderError.message,
+        properties: renderError.properties
+      });
+    }
 
-    doc.setData(templateData);
-    doc.render();
+    // Generate buffer
+    let buffer;
+    try {
+      buffer = doc.getZip().generate({
+        type: 'nodebuffer',
+        compression: 'DEFLATE',
+      });
+    } catch (bufferError) {
+      console.error('Buffer generation error:', bufferError);
+      return res.status(500).json({
+        error: 'Failed to generate document',
+        details: bufferError.message
+      });
+    }
 
-    const buffer = doc.getZip().generate({
-      type: 'nodebuffer',
-      compression: 'DEFLATE',
-    });
+    console.log('Document generated successfully');
+    console.log('File size:', buffer.length, 'bytes');
 
-    console.log(`Document generated. Size: ${buffer.length} bytes.`);
-
+    // Send file
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename="Lesson_Plan_G${grade}_${subject}_${topic.replace(/\s+/g, '_')}.docx"`);
     res.send(buffer);
 
-    console.log('========== LESSON PLAN GENERATED AND SENT SUCCESSFULY ==========');
-
+    console.log('========== LESSON GENERATION COMPLETE ==========');
+    
   } catch (error) {
-    console.error('Unexpected error in lesson generation endpoint:', error);
+    console.error('Unexpected error in lesson generation:', error);
     res.status(500).json({
       error: 'Internal server error',
-      details: error.message
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -791,38 +1047,38 @@ Generate the complete lesson plan following the JSON format specified.`;
 app.get('/api/test', (req, res) => {
   res.json({ 
     status: 'OK', 
-    message: 'Enhanced Expert Lesson Plan Server is fully operational',
-    timestamp: new Date().toISOString(),
-    supported_models: MODEL_QUEUE,
-    cooldown_states: modelCooldowns
+    message: 'Enhanced Expert Lesson Plan Server is running',
+    timestamp: new Date().toISOString() 
   });
 });
 
-// ================= VITE MIDDLEWARE SETUP / STATIC FILES =================
+// ================= ERROR HANDLING MIDDLEWARE =================
 
-if (process.env.NODE_ENV !== "production") {
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: "spa",
+app.use((error, req, res, next) => {
+  console.error('Unhandled error:', error);
+  res.status(500).json({
+    error: 'Internal server error',
+    details: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
   });
-  app.use(vite.middlewares);
-} else {
-  const distPath = path.join(process.cwd(), 'dist');
-  app.use(express.static(distPath));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not found',
+    message: `Route ${req.method} ${req.path} not found`
   });
-}
+});
 
 // ================= START SERVER =================
 
 app.listen(PORT, '0.0.0.0', () => {
-  ensureTemplateExists();
   console.log('═══════════════════════════════════════════════');
-  console.log('   ENHANCED EXPERT LESSON PLANNER SERVER');
+  console.log('   ENHANCED EXPERT LESSON PLAN SERVER');
   console.log('═══════════════════════════════════════════════');
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📁 Template: ${templatePath}`);
-  console.log(`🤖 Fallback Models Enabled: ${MODEL_QUEUE.length} models`);
+  console.log(`📁 Template: ${path.join(__dirname, 'LESSON PLAN TEMPLATE.docx')}`);
+  console.log(`🤖 AI: Multi-Model Fallback (${MODEL_QUEUE.length} models)`);
+  console.log(`✨ Features: SMART Objectives, Exact Standards, Student-Centered`);
   console.log('═══════════════════════════════════════════════\n');
 });
